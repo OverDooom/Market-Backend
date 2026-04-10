@@ -1,12 +1,38 @@
 // src/services/product.service.js
 const db = require('../config/db');
 
-exports.getAllProducts = async () => {
-  const result = await db.query(`
+exports.getAllProducts = async ({ page, limit, search, category }) => {
+  const offset = (page - 1) * limit;
+
+  let query = `
     SELECT p.*, c.name AS category
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
-  `);
+  `;
+
+  const values = [];
+  let conditions = [];
+
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(`p.name ILIKE $${values.length}`);
+  }
+
+  if (category) {
+    values.push(category);
+    conditions.push(`p.category_id = $${values.length}`);
+  }
+
+  if (conditions.length > 0) {
+    query += ` WHERE ` + conditions.join(' AND ');
+  }
+
+  values.push(limit);
+  values.push(offset);
+
+  query += ` LIMIT $${values.length - 1} OFFSET $${values.length}`;
+
+  const result = await db.query(query, values);
 
   return result.rows;
 };
@@ -22,23 +48,17 @@ exports.getProductById = async (id) => {
   return result.rows[0];
 };
 
-exports.getProductWithVariants = async (id) => {
-  const product = await db.query(`
-    SELECT * FROM products WHERE id=$1
-  `, [id]);
-
-  const variants = await db.query(`
-    SELECT * FROM product_variants WHERE product_id=$1
-  `, [id]);
-
-  return {
-    ...product.rows[0],
-    variants: variants.rows
-  };
-};
-
 exports.createProduct = async (data) => {
   const { name, description, brand, category_id } = data;
+
+  const categoryCheck = await db.query(
+    `SELECT id FROM categories WHERE id=$1`,
+    [category_id]
+  );
+
+  if (categoryCheck.rows.length === 0) {
+    throw new Error('Invalid category_id');
+  }
 
   const result = await db.query(`
     INSERT INTO products (name, description, brand, category_id)
@@ -59,9 +79,14 @@ exports.updateProduct = async (id, data) => {
     RETURNING *
   `, [name, description, brand, category_id, id]);
 
-  return result.rows[0];
+  return result.rows[0]; // undefined if not found
 };
 
 exports.deleteProduct = async (id) => {
-  await db.query(`DELETE FROM products WHERE id=$1`, [id]);
+  const result = await db.query(
+    `DELETE FROM products WHERE id=$1 RETURNING *`,
+    [id]
+  );
+
+  return result.rows[0]; // undefined if not found
 };
