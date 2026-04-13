@@ -12,7 +12,7 @@ const { generateToken } = require('../utils/jwt');
 router.get('/test-token', (req, res) => {
   const token = generateToken({
     id: 1,
-    role: 'admin'
+    role: 'user'
   });
 
   res.json({ token });
@@ -21,18 +21,18 @@ router.get('/test-token', (req, res) => {
 
 
 // GET all products
-router.get('/',auth, productController.getAllProducts);
+router.get('/', productController.getAllProducts);
 
 // GET single product
 router.get('/:id', productController.getProductById);
 
 // CREATE product (admin later)
-router.post('/', productController.createProduct);
+router.post('/', auth, role('admin'), productController.createProduct);
 
 // UPDATE product
-router.put('/:id', productController.updateProduct);
+router.put('/:id', auth, role('admin'), productController.updateProduct);
 
 // DELETE product
-router.delete('/:id', productController.deleteProduct);
+router.delete('/:id', auth, role('admin'), productController.deleteProduct);
 
 module.exports = router;

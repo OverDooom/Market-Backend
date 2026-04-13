@@ -34,26 +34,12 @@ router.get(
 
 
 // CREATE
-router.post(
-  "/",
-  // authMiddleware,
-  // roleMiddleware("admin"),
-  categoryController.createCategory
-);
-
+router.post("/", auth, role("admin"), categoryController.createCategory);
 
 // UPDATE
-router.put(
-  "/:id",
-  categoryController.updateCategory
-);
-
+router.put("/:id", auth, role("admin"), categoryController.updateCategory);
 
 // DELETE
-router.delete(
-  "/:id",
-  categoryController.deleteCategory
-);
-
+router.delete("/:id", auth, role("admin"), categoryController.deleteCategory);
 
 module.exports = router;
