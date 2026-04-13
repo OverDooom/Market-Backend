@@ -8,6 +8,9 @@ const categoryController =
 require("../controllers/category.controller");
 
 
+const auth = require('../middleware/auth.middleware');
+const role = require('../middleware/role.middleware');
+
 // Optional middleware
 // const authMiddleware =
 // require("../middleware/auth.middleware");

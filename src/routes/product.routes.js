@@ -2,9 +2,26 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/product.controller');
+const auth = require('../middleware/auth.middleware');
+const role = require('../middleware/role.middleware');
+
+////////////////////////////////////////////////////
+const { generateToken } = require('../utils/jwt');
+
+
+router.get('/test-token', (req, res) => {
+  const token = generateToken({
+    id: 1,
+    role: 'admin'
+  });
+
+  res.json({ token });
+});
+///////////////////////////////////////////////////
+
 
 // GET all products
-router.get('/', productController.getAllProducts);
+router.get('/',auth, productController.getAllProducts);
 
 // GET single product
 router.get('/:id', productController.getProductById);
