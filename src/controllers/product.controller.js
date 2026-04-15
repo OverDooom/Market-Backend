@@ -26,16 +26,12 @@ exports.getProductById = async (req, res, next) => {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid product id' });
+      const err = new Error("Invalid product id");
+      err.status = 400; 
+      throw err;
     }
-
     const product = await productService.getProductById(id);
-
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
-    res.json({ data: product });
+    res.json(product);
   } catch (err) {
     next(err);
   }
@@ -46,14 +42,13 @@ exports.createProduct = async (req, res, next) => {
     const { name, category_id } = req.body;
 
     if (!name || !category_id) {
-      return res.status(400).json({
-        error: 'Name and category_id are required'
-      });
+      const err = new Error("Name and category_id are required");
+      err.status = 400;
+      throw err;
     }
-
     const newProduct = await productService.createProduct(req.body);
 
-    res.status(201).json({ data: newProduct });
+    res.status(201).json(newProduct);
   } catch (err) {
     next(err);
   }
@@ -64,16 +59,20 @@ exports.updateProduct = async (req, res, next) => {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid product id' });
+      const err = new Error("Invalid product id");
+      err.status = 400; 
+      throw err;
     }
 
     const updated = await productService.updateProduct(id, req.body);
 
     if (!updated) {
-      return res.status(404).json({ error: 'Product not found' });
+      const err = new Error("Product not found");
+      err.status = 404;
+      throw err;
     }
 
-    res.json({ data: updated });
+    res.json(updated);
   } catch (err) {
     next(err);
   }
@@ -84,13 +83,17 @@ exports.deleteProduct = async (req, res, next) => {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid product id' });
+      const err = new Error("Invalid product id");
+      err.status = 400; 
+      throw err;
     }
 
     const deleted = await productService.deleteProduct(id);
 
     if (!deleted) {
-      return res.status(404).json({ error: 'Product not found' });
+      const err = new Error("Product not found");
+      err.status = 404;
+      throw err;
     }
 
     res.json({ message: 'Product deleted' });

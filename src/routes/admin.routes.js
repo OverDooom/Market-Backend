@@ -5,8 +5,13 @@ const adminController = require('../controllers/admin.controller');
 const auth = require('../middleware/auth.middleware');
 const role = require('../middleware/role.middleware');
 
-router.get('/users', auth, role('admin'), adminController.getAllUsers);
-router.get('/users/:id', auth, role('admin'), adminController.getUser);
-router.delete('/users/:id', auth, role('admin'), adminController.deleteUser);
+//GET all users
+router.get('/users', auth, role(['admin']), adminController.getAllUsers);
+
+//GET user by ID
+router.get('/users/:id', auth, role(['admin']), adminController.getUser);
+
+//DELETE user by ID
+router.delete('/users/:id', auth, role(['admin']), adminController.deleteUser);
 
 module.exports = router;

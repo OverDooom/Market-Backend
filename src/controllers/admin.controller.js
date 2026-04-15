@@ -20,8 +20,8 @@ exports.getUser = async (req, res, next) => {
 
 exports.deleteUser = async (req, res, next) => {
   try {
-    await adminService.deleteUser(req.params.id);
-    res.json({ message: "User deleted" });
+    const deleted = await adminService.deleteUser(req.params.id);
+    res.json(deleted);
   } catch (err) {
     next(err);
   }

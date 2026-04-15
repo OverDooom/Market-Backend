@@ -45,6 +45,11 @@ exports.getProductById = async (id) => {
     WHERE p.id = $1
   `, [id]);
 
+  if (result.rows.length === 0) {
+    const err = new Error("Product not found");
+    err.status = 404;
+    throw err;
+  }
   return result.rows[0];
 };
 
@@ -57,7 +62,9 @@ exports.createProduct = async (data) => {
   );
 
   if (categoryCheck.rows.length === 0) {
-    throw new Error('Invalid category_id');
+    const err = new Error("category_id does not exist");
+    err.status = 404; 
+    throw err;
   }
 
   const result = await db.query(`
@@ -78,7 +85,6 @@ exports.updateProduct = async (id, data) => {
     WHERE id=$5
     RETURNING *
   `, [name, description, brand, category_id, id]);
-
   return result.rows[0]; // undefined if not found
 };
 

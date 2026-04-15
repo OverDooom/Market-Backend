@@ -1,81 +1,73 @@
-const pool =
-require("../config/db");
+const db = require("../config/db");
 
-
-// =========================
-// GET ALL
-// =========================
-
+// GET ALL categories
 exports.getAllCategories =
 async () => {
-
   const query = `
-
     SELECT
       c.id,
       c.name,
       c.parent_id,
       p.name AS parent_name
-
     FROM categories c
-
     LEFT JOIN categories p
     ON c.parent_id = p.id
-
     ORDER BY c.name
-
   `;
+  const result = await db.query(query);
 
-  const result =
-    await pool.query(query);
+
+  if (result.rows.length === 0) {
+    const err = new Error("No categories found");
+    err.status = 404;
+    throw err;
+  }
 
   return result.rows;
-
 };
 
 
-// =========================
-// GET BY ID
-// =========================
 
+
+// GET category BY ID
 exports.getCategoryById =
 async (id) => {
-
   const result =
-    await pool.query(
+    await db.query(
       "SELECT * FROM categories WHERE id = $1",
       [id]
     );
 
+  if (result.rows.length === 0) {
+    const err = new Error("Category not found");
+    err.status = 404;
+    throw err;
+  }
   return result.rows[0];
 
 };
 
 
-// =========================
-// CREATE
-// =========================
+// CREATE category
 
-exports.createCategory =
-async (data) => {
+exports.createCategory = async (data) => {
 
   // Check duplicate name
   const duplicate =
-    await pool.query(
+    await db.query(
       "SELECT id FROM categories WHERE name = $1",
       [data.name]
     );
 
   if (duplicate.rows.length > 0) {
-
-    throw new Error(
-      "CATEGORY_EXISTS"
-    );
+    const err = new Error("Category name already exists");
+    err.status = 400;
+    throw err;
 
   }
 
   const result =
-    await pool.query(
+    await db.query(
 
       `INSERT INTO categories
       (name, parent_id)
@@ -96,39 +88,31 @@ async (data) => {
 };
 
 
-// =========================
-// UPDATE
-// =========================
-
-exports.updateCategory =
-async (id, data) => {
+// UPDATE category
+exports.updateCategory = async (id, data) => {
 
   // Check exists
   const existing =
-    await pool.query(
+    await db.query(
       "SELECT id FROM categories WHERE id=$1",
       [id]
     );
 
   if (existing.rows.length === 0) {
-
-    throw new Error(
-      "CATEGORY_NOT_FOUND"
-    );
-
+    const err = new Error("Category not found");
+    err.status = 404;
+    throw err;
   }
 
   // Prevent self-parent
   if (data.parent_id == id) {
-
-    throw new Error(
-      "INVALID_PARENT"
-    );
-
+    const err = new Error("Invalid parent category");
+    err.status = 400;
+    throw err;
   }
 
   const result =
-    await pool.query(
+    await db.query(
 
       `UPDATE categories
        SET name=$1,
@@ -149,44 +133,38 @@ async (id, data) => {
 };
 
 
-// =========================
-// DELETE
-// =========================
-
-exports.deleteCategory =
-async (id) => {
+// DELETE category BY ID
+exports.deleteCategory = async (id) => {
 
   // Check children
-  const children =
-    await pool.query(
-
+  const children = await db.query(
       `SELECT id
        FROM categories
        WHERE parent_id = $1`,
-
       [id]
-
     );
 
   if (children.rows.length > 0) {
 
-    throw new Error(
-      "CATEGORY_HAS_CHILDREN"
-    );
+    const err = new Error("Category has children");
+    err.status = 400;
+    throw err;
 
   }
 
   const result =
-    await pool.query(
-
+    await db.query(
       `DELETE FROM categories
        WHERE id=$1
        RETURNING *`,
-
       [id]
-
     );
 
-  return result.rows[0];
+    if (result.rows.length === 0) {
+      const err = new Error("Category not found");
+      err.status = 404;
+      throw err;
+    }
 
+  return result.rows[0];
 };

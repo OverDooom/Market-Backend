@@ -2,261 +2,97 @@ const categoryService =
 require("../services/category.service");
 
 
-// =========================
-// GET ALL
-// =========================
-
+// GET ALL 
 exports.getCategories =
 async (req, res) => {
-
   try {
-
-    const categories =
-      await categoryService
-        .getAllCategories();
-
+    const categories = await categoryService.getAllCategories();
     res.json(categories);
-
   }
-  catch (error) {
-
-    res.status(500).json({
-      message:
-        "Error fetching categories"
-    });
-
+  catch (err) {
+    next(err);
   }
-
 };
 
 
-// =========================
-// GET BY ID
-// =========================
-
-exports.getCategoryById =
-async (req, res) => {
-
+// GET category BY ID
+exports.getCategoryById = async (req, res) => {
   try {
-
-    const id =
-      parseInt(req.params.id);
-
+    const id = parseInt(req.params.id);
     if (isNaN(id)) {
-
-      return res.status(400).json({
-        message: "Invalid ID"
-      });
-
+      const err = new Error("Invalid category ID");
+      err.status = 400;
+      throw err;
     }
 
-    const category =
-      await categoryService
-        .getCategoryById(id);
-
+    const category = await categoryService.getCategoryById(id);
     if (!category) {
-
-      return res.status(404).json({
-        message:
-          "Category not found"
-      });
-
+      const err = new Error("Category not found");
+      err.status = 404;
+      throw err;
     }
-
     res.json(category);
-
   }
-  catch (error) {
-
-    res.status(500).json({
-      message:
-        "Error fetching category"
-    });
-
+  catch (err) {
+    next(err);
   }
-
 };
 
 
-// =========================
-// CREATE
-// =========================
-
-exports.createCategory =
-async (req, res) => {
-
+// CREATE category
+exports.createCategory = async (req, res) => {
   try {
-
-    const data =
-      req.body;
-
+    const data = req.body;
     if (!data.name) {
-
-      return res.status(400).json({
-        message:
-          "Category name required"
-      });
-
+      const err = new Error("Category name is required");
+      err.status = 400;
+      throw err;
     }
 
-    const result =
-      await categoryService
-        .createCategory(data);
+    const result = await categoryService.createCategory(data);
 
     res.status(201)
        .json(result);
-
   }
-  catch (error) {
-
-    if (
-      error.message ===
-      "CATEGORY_EXISTS"
-    ) {
-
-      return res.status(409).json({
-        message:
-          "Category already exists"
-      });
-
-    }
-
-    res.status(500).json({
-      message:
-        "Error creating category"
-    });
-
+  catch (err) {
+    next(err);
   }
-
 };
 
 
-// =========================
-// UPDATE
-// =========================
-
-exports.updateCategory =
-async (req, res) => {
-
+// UPDATE category BY ID
+exports.updateCategory = async (req, res) => {
   try {
-
-    const id =
-      parseInt(req.params.id);
-
+    const id = parseInt(req.params.id);
     if (isNaN(id)) {
-
-      return res.status(400).json({
-        message:
-          "Invalid ID"
-      });
-
+      const err = new Error("Invalid category ID");
+      err.status = 400;
+      throw err;
     }
-
-    const result =
-      await categoryService
-        .updateCategory(
-          id,
-          req.body
-        );
-
+    const result = await categoryService.updateCategory(id, req.body);
     res.json(result);
-
   }
-  catch (error) {
-
-    if (
-      error.message ===
-      "CATEGORY_NOT_FOUND"
-    ) {
-
-      return res.status(404).json({
-        message:
-          "Category not found"
-      });
-
-    }
-
-    if (
-      error.message ===
-      "INVALID_PARENT"
-    ) {
-
-      return res.status(400).json({
-        message:
-          "Category cannot be its own parent"
-      });
-
-    }
-
-    res.status(500).json({
-      message:
-        "Error updating category"
-    });
-
+  catch (err) {
+    next(err);
   }
-
 };
 
 
-// =========================
-// DELETE
-// =========================
-
-exports.deleteCategory =
-async (req, res) => {
-
+// DELETE category BY ID
+exports.deleteCategory = async (req, res) => {
   try {
-
-    const id =
-      parseInt(req.params.id);
+    const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-
-      return res.status(400).json({
-        message:
-          "Invalid ID"
-      });
-
+      const err = new Error("Invalid category ID");
+      err.status = 400;
+      throw err;
     }
 
-    const result =
-      await categoryService
-        .deleteCategory(id);
-
-    if (!result) {
-
-      return res.status(404).json({
-        message:
-          "Category not found"
-      });
-
-    }
-
-    res.json({
-      message:
-        "Category deleted"
-    });
-
+    const result = await categoryService.deleteCategory(id);
+    res.json(result);
   }
-  catch (error) {
-
-    if (
-      error.message ===
-      "CATEGORY_HAS_CHILDREN"
-    ) {
-
-      return res.status(400).json({
-        message:
-          "Cannot delete category with subcategories"
-      });
-
-    }
-
-    res.status(500).json({
-      message:
-        "Error deleting category"
-    });
-
+  catch (err) {
+    next(err);
   }
-
 };

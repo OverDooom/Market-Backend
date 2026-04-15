@@ -1,10 +1,12 @@
 const db = require('../config/db');
-const bcrypt = require('bcrypt');
 const jwt = require('../utils/jwt');
+const { hashPassword, comparePassword } = require('../utils/hash');
 
 exports.register = async ({ name, email, password }) => {
   if (!email || !password) {
-    throw new Error("Email and password are required");
+    const err = new Error("Email and password are required");
+    err.status = 400;
+    throw err;
   }
 
   const existing = await db.query(
@@ -13,12 +15,13 @@ exports.register = async ({ name, email, password }) => {
   );
 
   if (existing.rows.length > 0) {
-    throw new Error("Email already exists");
+    const err = new Error("Email already exists");
+    err.status = 400;
+    throw err;
   }
 
-  const hashed = await bcrypt.hash(password, 10);
+  const hashed = await hashPassword(password, 10);
 
-  // make sure role_id = 1 exists as "user"
   const result = await db.query(
     `INSERT INTO users (name, email, password_hash, role_id)
      VALUES ($1, $2, $3, $4)
@@ -31,7 +34,9 @@ exports.register = async ({ name, email, password }) => {
 
 exports.login = async ({ email, password }) => {
   if (!email || !password) {
-    throw new Error("Email and password are required");
+    const err = new Error("Email and password are required");
+    err.status = 400;
+    throw err;
   }
 
   const result = await db.query(
@@ -40,14 +45,29 @@ exports.login = async ({ email, password }) => {
   );
 
   const user = result.rows[0];
-  if (!user) throw new Error("Invalid credentials");
+  if (!user) {
+    const err = new Error("Invalid Email");
+    err.status = 401;
+    throw err;
+  }
 
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) throw new Error("Invalid credentials");
+  const valid = await comparePassword(password, user.password_hash);
+  if (!valid) {
+    const err = new Error("Invalid Password");
+    err.status = 401;
+    throw err;
+  }
+
+  const roleResult = await db.query(
+  "SELECT name FROM roles WHERE id = $1",
+  [user.role_id]
+  );
+
+  const roleName = roleResult.rows[0].name;
 
   const token = jwt.generateToken({
     id: user.id,
-    role_id: user.role_id,
+    role: roleName
   });
 
   return {
