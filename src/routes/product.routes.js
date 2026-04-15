@@ -24,7 +24,7 @@ router.get('/test-token', (req, res) => {
 router.get('/', productController.getAllProducts);
 
 // GET single product
-router.get('/:id', productController.getProductById);
+router.get('/:id',auth, productController.getProductById);
 
 // CREATE product (admin later)
 router.post('/', auth, role('admin'), productController.createProduct);
