@@ -3,8 +3,10 @@ const express = require('express');
 const router = express.Router();
 
 const productController = require('../controllers/product.controller');
+const variantController = require('../controllers/variant.controller');
 const auth = require('../middleware/auth.middleware');
 const role = require('../middleware/role.middleware');
+
 
 ////////////////////////////////////////////////////
 const { generateToken } = require('../utils/jwt');
@@ -21,6 +23,25 @@ router.get('/test-token', (req, res) => {
 ///////////////////////////////////////////////////
 
 
+// VARIANTS
+
+// GET all variants
+router.get('/variants', variantController.getAllVariants);
+
+// GET all variants for product
+router.get('/:productId/variants', variantController.getVariantsByProduct);
+
+// CREATE variant
+router.post('/:productId/variants', auth, role(['admin']), variantController.createVariant);
+
+// UPDATE variant
+router.put('/:productId/variants/:variantId', auth, role(['admin']), variantController.updateVariant);
+
+// DELETE variant
+router.delete('/:productId/variants/:variantId', auth, role(['admin']), variantController.deleteVariant);
+
+//Products 
+
 // GET all products
 router.get('/', productController.getAllProducts);
 
@@ -35,5 +56,6 @@ router.put('/:id', auth, role(['admin']), productController.updateProduct);
 
 // DELETE product
 router.delete('/:id', auth, role(['admin']), productController.deleteProduct);
+
 
 module.exports = router;
