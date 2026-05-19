@@ -16,6 +16,7 @@ const categoryRoutes = require("./routes/category.routes");
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const adminRoutes = require('./routes/admin.routes');
+const cartRoutes = require('./routes/cart.routes');
 
 
 app.use(express.json());
@@ -24,6 +25,7 @@ app.use("/api/categories", categoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/cart', cartRoutes);
 
 app.use(errorMiddleware);
 

@@ -12,9 +12,18 @@ const role = require('../middleware/role.middleware');
 const { generateToken } = require('../utils/jwt');
 
 
-router.get('/test-token', (req, res) => {
+router.get('/user-token', (req, res) => {
   const token = generateToken({
     id: 1,
+    role: 'user'
+  });
+
+  res.json({ token });
+});
+
+router.get('/admin-token', (req, res) => {
+  const token = generateToken({
+    id: 2,
     role: 'admin'
   });
 
@@ -46,7 +55,7 @@ router.delete('/:productId/variants/:variantId', auth, role(['admin']), variantC
 router.get('/', productController.getAllProducts);
 
 // GET single product
-router.get('/:id',auth, productController.getProductById);
+router.get('/:id', productController.getProductById);
 
 // CREATE product (admin later)
 router.post('/', auth, role(['admin']), productController.createProduct);
