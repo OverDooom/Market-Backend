@@ -1,41 +1,7 @@
 // src/services/product.service.js
 const db = require('../config/db');
 
-/*exports.getAllProducts = async ({ page, limit, search, category }) => {
-  const offset = (page - 1) * limit;
 
-  let query = `
-    SELECT p.*, c.name AS category
-    FROM products p
-    LEFT JOIN categories c ON p.category_id = c.id
-  `;
-
-  const values = [];
-  let conditions = [];
-
-  if (search) {
-    values.push(`%${search}%`);
-    conditions.push(`p.name ILIKE $${values.length}`);
-  }
-
-  if (category) {
-    values.push(category);
-    conditions.push(`p.category_id = $${values.length}`);
-  }
-
-  if (conditions.length > 0) {
-    query += ` WHERE ` + conditions.join(' AND ');
-  }
-
-  values.push(limit);
-  values.push(offset);
-
-  query += ` LIMIT $${values.length - 1} OFFSET $${values.length}`;
-
-  const result = await db.query(query, values);
-
-  return result.rows;
-};*/
 exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
   const offset = (page - 1) * limit;
 
@@ -65,7 +31,10 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
 
       COALESCE(SUM(v.quantity), 0) AS total_stock,
 
-      COUNT(v.id) AS variants_count,
+      COUNT(DISTINCT v.id) AS variants_count,
+
+      ROUND(AVG(r.rating), 1) AS average_rating,
+      COUNT(DISTINCT r.id) AS reviews_count,
 
       CASE
         WHEN COALESCE(SUM(v.quantity), 0) > 0
@@ -80,6 +49,9 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
 
     LEFT JOIN product_variants v
       ON p.id = v.product_id
+
+    LEFT JOIN reviews r
+      ON p.id = r.product_id
   `;
 
   // SEARCH
@@ -140,6 +112,9 @@ exports.getProductById = async (id) => {
       p.brand,
       p.created_at,
 
+      ROUND(AVG(r.rating), 1) AS average_rating,
+      COUNT(DISTINCT r.id) AS reviews_count,
+
       json_build_object(
         'id', c.id,
         'name', c.name
@@ -149,6 +124,9 @@ exports.getProductById = async (id) => {
 
     LEFT JOIN categories c
       ON p.category_id = c.id
+
+    LEFT JOIN reviews r
+      ON p.id = r.product_id
 
     WHERE p.id = $1
   `, [id]);
