@@ -19,11 +19,13 @@ const adminRoutes = require('./routes/admin.routes');
 const cartRoutes = require('./routes/cart.routes');
 const orderRoutes = require('./routes/order.routes');
 const reviewRoutes = require('./routes/review.routes');
+const notificationRoutes = require('./routes/notification.routes');
 
 
 app.use(express.json());
 app.use('/api/products', ProductRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
