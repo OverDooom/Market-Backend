@@ -1,133 +1,235 @@
 const db = require('../config/db');
 
+
+const cartService =
+require('./cart.service');
+
+const pricingService =
+require('./pricing.service');
+
+const promotionService =
+require('./promotion.service');
+
+
+// =========================================
 // CHECKOUT
-exports.checkout = async (userId, addressId) => {
-  const client = await db.connect();
+// =========================================
+
+exports.checkout =
+async ({
+  userId,
+  addressId,
+  couponCodes = []
+}) => {
+
+  const client =
+    await db.connect();
 
   try {
 
-    await client.query('BEGIN');
-
-    // 1. Get cart
-    const cartRes = await client.query(
-      `SELECT * FROM carts WHERE user_id = $1`,
-      [userId]
+    await client.query(
+      'BEGIN'
     );
 
-    const cart = cartRes.rows[0];
+    // =====================================
+    // LOAD CART WITH LOCK
+    // =====================================
 
-    if (!cart) {
-      const err = new Error('Cart not found');
-      err.status = 404;
-      throw err;
-    }
+    const cart =
+      await cartService
+      .getCartForCheckout(
+        userId,
+        client
+      );
 
-    // 2. Get cart items
-    const itemsRes = await client.query(
-      `SELECT
-          ci.product_variant_id,
-          ci.quantity,
-          pv.price,
-          pv.quantity AS stock
-       FROM cart_items ci
-       JOIN product_variants pv
-         ON ci.product_variant_id = pv.id
-       WHERE ci.cart_id = $1`,
-      [cart.id]
-    );
+    if (
+      cart.items.length === 0
+    ) {
 
-    const items = itemsRes.rows;
+      const err = new Error(
+        'Cart is empty'
+      );
 
-    if (items.length === 0) {
-      const err = new Error('Cart is empty');
       err.status = 400;
+
       throw err;
     }
 
-    // 3. Validate stock + calculate total
-    let total = 0;
+    // =====================================
+    // VALIDATE STOCK
+    // =====================================
 
-    for (const item of items) {
+    for (const item of cart.items) {
 
-      if (item.quantity > item.stock) {
+      if (
+        item.quantity >
+        item.stock_quantity
+      ) {
+
         const err = new Error(
-          `Insufficient stock for variant ${item.product_variant_id}`
+          `Insufficient stock for ${item.product_name}`
         );
 
         err.status = 400;
+
         throw err;
       }
-
-      total += item.price * item.quantity;
     }
 
-    // 4. Create order
-    const orderRes = await client.query(
-      `INSERT INTO orders
-       (user_id, address_id, total_amount, status)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [
+    // =====================================
+    // CALCULATE PRICING
+    // =====================================
+
+    const pricing =
+      await pricingService
+      .calculateCart({
+        client,
         userId,
-        addressId,
-        total,
-        'pending'
-      ]
-    );
+        items: cart.items,
+        couponCodes
+      });
 
-    const order = orderRes.rows[0];
+    // =====================================
+    // CREATE ORDER
+    // =====================================
 
-    // 5. Create order items
-    for (const item of items) {
+    const orderResult =
+      await client.query(
+        `
+        INSERT INTO orders (
+          user_id,
+          address_id,
+          subtotal,
+          discount_total,
+          total_amount,
+          status
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          'pending'
+        )
+        RETURNING *
+        `,
+        [
+          userId,
+          addressId,
+
+          pricing.subtotal,
+
+          pricing.discount_total,
+
+          pricing.total
+        ]
+      );
+
+    const order =
+      orderResult.rows[0];
+
+    // =====================================
+    // CREATE ORDER ITEMS
+    // =====================================
+
+    for (const item of cart.items) {
 
       await client.query(
-        `INSERT INTO order_items
-         (
-           order_id,
-           product_variant_id,
-           quantity,
-           price_at_purchase
-         )
-         VALUES ($1, $2, $3, $4)`,
+        `
+        INSERT INTO order_items (
+          order_id,
+          product_variant_id,
+          quantity,
+          price
+        )
+        VALUES ($1, $2, $3, $4)
+        `,
         [
           order.id,
-          item.product_variant_id,
+          item.variant_id,
           item.quantity,
           item.price
         ]
       );
+    }
 
-      // 6. Reduce stock
+    // =====================================
+    // REDUCE STOCK
+    // =====================================
+
+    for (const item of cart.items) {
+
       await client.query(
-        `UPDATE product_variants
-         SET quantity = quantity - $1
-         WHERE id = $2`,
+        `
+        UPDATE product_variants
+        SET stock_quantity =
+          stock_quantity - $1
+        WHERE id = $2
+        `,
         [
           item.quantity,
-          item.product_variant_id
+          item.variant_id
         ]
       );
     }
 
-    // 7. Clear cart
+    // =====================================
+    // RECORD PROMOTION USAGE
+    // =====================================
+
+    await promotionService
+      .recordPromotionUsage({
+
+        client,
+
+        promotions:
+          pricing.discounts,
+
+        userId,
+
+        orderId:
+          order.id
+      });
+
+    // =====================================
+    // CLEAR CART
+    // =====================================
+
     await client.query(
-      `DELETE FROM cart_items WHERE cart_id = $1`,
+      `
+      DELETE FROM cart_items
+      WHERE cart_id = $1
+      `,
       [cart.id]
     );
 
-    await client.query('COMMIT');
+    // =====================================
+    // COMMIT
+    // =====================================
 
-    return order;
+    await client.query(
+      'COMMIT'
+    );
+
+    return {
+
+      order,
+
+      pricing
+    };
 
   } catch (err) {
 
-    await client.query('ROLLBACK');
+    await client.query(
+      'ROLLBACK'
+    );
+
     throw err;
 
   } finally {
 
     client.release();
-
   }
 };
 

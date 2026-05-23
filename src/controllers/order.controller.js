@@ -1,24 +1,36 @@
 const orderService = require('../services/order.service');
 
 // CHECKOUT
-exports.checkout = async (req, res, next) => {
+exports.checkout =
+async (req, res, next) => {
+
   try {
-    const { address_id } = req.body;
 
-    if (!address_id) {
-      const err = new Error('address_id is required');
-      err.status = 400;
-      throw err;
-    }
+    const {
+      address_id,
+      coupons = []
+    } = req.body;
 
-    const order = await orderService.checkout(
-      req.user.id,
-      address_id
+    const result =
+      await orderService
+      .checkout({
+
+        userId:
+          req.user.id,
+
+        addressId:
+          address_id,
+
+        couponCodes:
+          coupons
+      });
+
+    res.status(201).json(
+      result
     );
 
-    res.status(201).json(order);
-
   } catch (err) {
+
     next(err);
   }
 };

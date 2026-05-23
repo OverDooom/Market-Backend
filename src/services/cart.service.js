@@ -59,14 +59,24 @@ exports.getCart = async (userId) => {
     `SELECT 
         ci.id,
         ci.quantity,
+
         pv.id AS variant_id,
+        pv.product_id,
         pv.price,
         pv.sku,
-        p.name AS product_name
-     FROM cart_items ci
-     JOIN product_variants pv ON ci.product_variant_id = pv.id
-     JOIN products p ON pv.product_id = p.id
-     WHERE ci.cart_id = $1`,
+
+        p.name AS product_name,
+        p.category_id
+
+    FROM cart_items ci
+
+    JOIN product_variants pv
+      ON ci.product_variant_id = pv.id
+
+    JOIN products p
+      ON pv.product_id = p.id
+
+    WHERE ci.cart_id = $1`,
     [cart.id]
   );
 
@@ -94,4 +104,70 @@ exports.clearCart = async (cartId) => {
     `DELETE FROM cart_items WHERE cart_id = $1`,
     [cartId]
   );
+};
+
+// =========================================
+// GET CART FOR CHECKOUT
+// =========================================
+
+exports.getCartForCheckout =
+async (
+  userId,
+  client = db
+) => {
+
+  const cartResult =
+    await client.query(
+      `
+      SELECT *
+      FROM carts
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+  const cart =
+    cartResult.rows[0];
+
+  if (!cart) {
+    throw new Error(
+      'Cart not found'
+    );
+  }
+
+  const items =
+    await client.query(
+      `
+      SELECT 
+          ci.id,
+          ci.quantity,
+
+          pv.id AS variant_id,
+          pv.product_id,
+          pv.price,
+          pv.stock_quantity,
+          pv.sku,
+
+          p.name AS product_name,
+          p.category_id
+
+      FROM cart_items ci
+
+      JOIN product_variants pv
+        ON ci.product_variant_id = pv.id
+
+      JOIN products p
+        ON pv.product_id = p.id
+
+      WHERE ci.cart_id = $1
+
+      FOR UPDATE
+      `,
+      [cart.id]
+    );
+
+  return {
+    ...cart,
+    items: items.rows
+  };
 };

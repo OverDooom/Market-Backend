@@ -5,7 +5,7 @@ const db = require('../config/db');
 // GET AUTOMATIC PROMOTIONS
 // =========================================
 
-exports.getAutomaticPromotions = async () => {
+exports.getAutomaticPromotions = async (client = db) => {
 
   const result = await db.query(`
     SELECT *
@@ -30,9 +30,9 @@ exports.getAutomaticPromotions = async () => {
 // VALIDATE COUPON
 // =========================================
 
-exports.validateCoupon = async (code) => {
+exports.validateCoupon = async (code, client = db) => {
 
-  const result = await db.query(`
+  const result = await client.query(`
     SELECT
       pc.id AS coupon_id,
       pc.code,
@@ -89,4 +89,262 @@ exports.validateCoupon = async (code) => {
   }
 
   return coupon;
+};
+
+// =========================================
+// GET PROMOTION PRODUCTS
+// =========================================
+
+exports.getPromotionProducts = async (promotionId, client = db) => {
+
+  const result = await client.query(
+    `
+    SELECT product_id
+    FROM promotion_products
+    WHERE promotion_id = $1
+    `,
+    [promotionId]
+  );
+
+  return result.rows.map(
+    row => row.product_id
+  );
+};
+
+// =========================================
+// GET PROMOTION CATEGORIES
+// =========================================
+
+exports.getPromotionCategories =
+async (promotionId, client = db) => {
+
+  const result = await client.query(
+    `
+    SELECT category_id
+    FROM promotion_categories
+    WHERE promotion_id = $1
+    `,
+    [promotionId]
+  );
+
+  return result.rows.map(
+    row => row.category_id
+  );
+};
+
+// =========================================
+// VALIDATE PROMOTION CONDITIONS
+// =========================================
+
+exports.validatePromotionConditions =
+async ({
+  promotion,
+  userId,
+  subtotal
+}, client = db) => {
+
+  // =====================================
+  // MIN CART TOTAL
+  // =====================================
+
+  if (
+    promotion.min_cart_total &&
+    subtotal < Number(
+      promotion.min_cart_total
+    )
+  ) {
+    return false;
+  }
+
+  // =====================================
+  // FIRST ORDER ONLY
+  // =====================================
+
+  if (promotion.first_order_only) {
+
+    const existingOrders =
+      await client.query(
+        `
+        SELECT id
+        FROM orders
+        WHERE user_id = $1
+        LIMIT 1
+        `,
+        [userId]
+      );
+
+    if (
+      existingOrders.rows.length > 0
+    ) {
+      return false;
+    }
+  }
+
+  // =====================================
+  // GLOBAL USAGE LIMIT
+  // =====================================
+
+  if (promotion.usage_limit) {
+
+    const usage =
+      await client.query(
+        `
+        SELECT COUNT(*)::INTEGER AS count
+        FROM promotion_usage
+        WHERE promotion_id = $1
+        `,
+        [promotion.id]
+      );
+
+    if (
+      usage.rows[0].count >=
+      promotion.usage_limit
+    ) {
+      return false;
+    }
+  }
+
+  // =====================================
+  // USER USAGE LIMIT
+  // =====================================
+
+  if (promotion.usage_per_user) {
+
+    const usage =
+      await client.query(
+        `
+        SELECT COUNT(*)::INTEGER AS count
+        FROM promotion_usage
+        WHERE promotion_id = $1
+        AND user_id = $2
+        `,
+        [
+          promotion.id,
+          userId
+        ]
+      );
+
+    if (
+      usage.rows[0].count >=
+      promotion.usage_per_user
+    ) {
+      return false;
+    }
+  }
+
+  // =====================================
+  // USER TARGETING
+  // =====================================
+
+  const targetedUsers =
+    await client.query(
+      `
+      SELECT user_id
+      FROM promotion_users
+      WHERE promotion_id = $1
+      `,
+      [promotion.id]
+    );
+
+  // if promotion has user targeting
+  if (
+    targetedUsers.rows.length > 0
+  ) {
+
+    const allowed =
+      targetedUsers.rows.some(
+        row =>
+          row.user_id === userId
+      );
+
+    if (!allowed) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+// =========================================
+// GET ELIGIBLE ITEMS
+// =========================================
+
+exports.getEligibleItems =
+async (
+  promotion,
+  items,
+  client = db
+) => {
+
+  const productIds =
+    await exports.getPromotionProducts(
+      promotion.id
+    );
+
+  const categoryIds =
+    await exports.getPromotionCategories(
+      promotion.id
+    );
+
+  // no targeting => all items
+  if (
+    productIds.length === 0 &&
+    categoryIds.length === 0
+  ) {
+    return items;
+  }
+
+  return items.filter(item => {
+
+    const productMatch =
+      productIds.includes(
+        item.product_id
+      );
+
+    const categoryMatch =
+      categoryIds.includes(
+        item.category_id
+      );
+
+    return (
+      productMatch ||
+      categoryMatch
+    );
+  });
+};
+
+// =========================================
+// RECORD PROMOTION USAGE
+// =========================================
+
+exports.recordPromotionUsage =
+async ({
+  client = db,
+  promotions,
+  userId,
+  orderId
+}) => {
+
+  for (const promo of promotions) {
+
+    await client.query(
+      `
+      INSERT INTO promotion_usage (
+        promotion_id,
+        coupon_id,
+        user_id,
+        order_id,
+        discount_amount
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [
+        promo.promotion_id,
+        promo.coupon_id,
+        userId,
+        orderId,
+        promo.amount
+      ]
+    );
+  }
 };
