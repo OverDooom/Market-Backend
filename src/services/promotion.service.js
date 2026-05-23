@@ -7,7 +7,7 @@ const db = require('../config/db');
 
 exports.getAutomaticPromotions = async (client = db) => {
 
-  const result = await db.query(`
+  const result = await client.query(`
     SELECT *
     FROM promotions
     WHERE is_active = true
@@ -57,6 +57,19 @@ exports.validateCoupon = async (code, client = db) => {
     const err = new Error('Invalid coupon code');
     err.status = 404;
     throw err;
+  }
+  
+// coupon usage limit
+  if (coupon.coupon_usage_limit) {
+    const used = await client.query(
+      `SELECT COUNT(*)::INTEGER AS count
+      FROM promotion_usage WHERE coupon_id = $1`,
+      [coupon.coupon_id]
+    );
+    if (used.rows[0].count >= coupon.coupon_usage_limit) {
+      const err = new Error('Coupon usage limit reached');
+      err.status = 400; throw err;
+    }
   }
 
   // coupon expiry
@@ -278,12 +291,14 @@ async (
 
   const productIds =
     await exports.getPromotionProducts(
-      promotion.id
+      promotion.id,
+      client
     );
 
   const categoryIds =
     await exports.getPromotionCategories(
-      promotion.id
+      promotion.id,
+      client
     );
 
   // no targeting => all items

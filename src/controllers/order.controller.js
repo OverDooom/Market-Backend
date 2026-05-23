@@ -6,10 +6,13 @@ async (req, res, next) => {
 
   try {
 
-    const {
-      address_id,
-      coupons = []
-    } = req.body;
+    const {address_id} = req.body;
+    const coupons = req.body.coupons || [];
+
+    if (!Array.isArray(coupons) || coupons.some(c => typeof c !== 'string')) {
+      return res.status(400).json({ error: 'coupons must be an array of strings' });
+    }
+
 
     const result =
       await orderService

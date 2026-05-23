@@ -138,11 +138,7 @@ exports.getVariantsByProduct = async (productId) => {
     GROUP BY v.id
   `, [productId]);
 
-  if (result.rows.length === 0) {
-    const err = new Error("No variants found for this product");
-    err.status = 404;
-    throw err;
-  }
+  if (result.rows.length === 0) return [];
 
   return result.rows;
 };

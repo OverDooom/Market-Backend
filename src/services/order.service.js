@@ -89,6 +89,19 @@ async ({
         couponCodes
       });
 
+
+    // =====================================
+    // VALIDATE ADDRESS
+    // =====================================
+    const addrCheck = await client.query(
+      `SELECT id FROM addresses WHERE id = $1 AND user_id = $2`,
+      [addressId, userId]
+    );
+    if (!addrCheck.rows[0]) {
+      const err = new Error('Invalid address');
+      err.status = 400; throw err;
+    }
+    
     // =====================================
     // CREATE ORDER
     // =====================================
@@ -141,7 +154,7 @@ async ({
           order_id,
           product_variant_id,
           quantity,
-          price
+          price_at_purchase
         )
         VALUES ($1, $2, $3, $4)
         `,
@@ -163,8 +176,8 @@ async ({
       await client.query(
         `
         UPDATE product_variants
-        SET stock_quantity =
-          stock_quantity - $1
+        SET quantity =
+          quantity - $1
         WHERE id = $2
         `,
         [

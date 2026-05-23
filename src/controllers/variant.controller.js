@@ -62,7 +62,8 @@ exports.createVariant = async (req, res, next) => {
       throw err;
     }
 
-    const newVariant = await variantService.createVariant(req.body);
+
+    const newVariant = await variantService.createVariant({...req.body,product_id: parseInt(req.params.productId)});
 
     res.status(201).json(newVariant);
   } catch (err) {

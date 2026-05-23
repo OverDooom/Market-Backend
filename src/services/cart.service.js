@@ -145,7 +145,7 @@ async (
           pv.id AS variant_id,
           pv.product_id,
           pv.price,
-          pv.stock_quantity,
+          pv.quantity AS stock_quantity,
           pv.sku,
 
           p.name AS product_name,

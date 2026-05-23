@@ -17,11 +17,7 @@ async () => {
   const result = await db.query(query);
 
 
-  if (result.rows.length === 0) {
-    const err = new Error("No categories found");
-    err.status = 404;
-    throw err;
-  }
+  if (result.rows.length === 0) return [];
 
   return result.rows;
 };

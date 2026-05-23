@@ -124,11 +124,9 @@ async ({
     );
 
   let finalPromotions = [];
-
+/*
   // highest non-stackable
-  if (
-    nonStackable.length > 0
-  ) {
+  if (nonStackable.length > 0) {
 
     let bestPromo = null;
     let bestDiscount = 0;
@@ -179,6 +177,14 @@ async ({
     finalPromotions.push(
       ...stackable
     );
+  }
+*/
+  if (nonStackable.length > 0) {
+    // pick single best non-stackable only
+    finalPromotions = [bestPromo];
+  } else {
+    // all stackable promos apply together
+    finalPromotions = stackable;
   }
 
   // if chosen promo is stackable
