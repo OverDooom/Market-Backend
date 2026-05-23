@@ -1,10 +1,8 @@
-const categoryService =
-require("../services/category.service");
+const categoryService = require("../services/category.service");
 
 
 // GET ALL 
-exports.getCategories =
-async (req, res) => {
+exports.getCategories = async (req, res, next) => {
   try {
     const categories = await categoryService.getAllCategories();
     res.json(categories);
@@ -16,7 +14,7 @@ async (req, res) => {
 
 
 // GET category BY ID
-exports.getCategoryById = async (req, res) => {
+exports.getCategoryById = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -40,7 +38,7 @@ exports.getCategoryById = async (req, res) => {
 
 
 // CREATE category
-exports.createCategory = async (req, res) => {
+exports.createCategory = async (req, res, next) => {
   try {
     const data = req.body;
     if (!data.name) {
@@ -51,8 +49,7 @@ exports.createCategory = async (req, res) => {
 
     const result = await categoryService.createCategory(data);
 
-    res.status(201)
-       .json(result);
+    res.status(201).json(result);
   }
   catch (err) {
     next(err);
@@ -61,7 +58,7 @@ exports.createCategory = async (req, res) => {
 
 
 // UPDATE category BY ID
-exports.updateCategory = async (req, res) => {
+exports.updateCategory = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -79,7 +76,7 @@ exports.updateCategory = async (req, res) => {
 
 
 // DELETE category BY ID
-exports.deleteCategory = async (req, res) => {
+exports.deleteCategory = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
 

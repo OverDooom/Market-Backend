@@ -12,7 +12,7 @@ exports.getUser = async (id) => {
     "SELECT id, name, email, phone FROM users WHERE id = $1",
     [id]
   );
-  if (!result) {
+  if (!result.rows[0]) {
     const err = new Error("User not found");
     err.status = 404;
     throw err;

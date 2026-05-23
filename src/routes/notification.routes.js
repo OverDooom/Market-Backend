@@ -15,18 +15,18 @@ router.get(
   notificationController.getNotifications
 );
 
-// MARK AS READ
-router.put(
-  '/:id/read',
-  auth,
-  notificationController.markAsRead
-);
-
 // MARK ALL AS READ
 router.put(
   '/read-all',
   auth,
   notificationController.markAllAsRead
+);
+
+// MARK AS READ
+router.put(
+  '/:id/read',
+  auth,
+  notificationController.markAsRead
 );
 // test only ------------------------------------------
 router.post(

@@ -20,7 +20,7 @@ exports.register = async ({ name, email, password }) => {
     throw err;
   }
 
-  const hashed = await hashPassword(password, 10);
+  const hashed = await hashPassword(password);
 
   const result = await db.query(
     `INSERT INTO users (name, email, password_hash, role_id)
@@ -46,14 +46,14 @@ exports.login = async ({ email, password }) => {
 
   const user = result.rows[0];
   if (!user) {
-    const err = new Error("Invalid Email");
+    const err = new Error("Invalid email or password");
     err.status = 401;
     throw err;
   }
 
   const valid = await comparePassword(password, user.password_hash);
   if (!valid) {
-    const err = new Error("Invalid Password");
+    const err = new Error("Invalid email or password");
     err.status = 401;
     throw err;
   }
