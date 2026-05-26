@@ -1,5 +1,7 @@
 const db = require('../config/db');
 const { generateSKU } = require('../utils/sku');
+const inventoryService = require('./inventory.service');
+
 
 // GET ALL variants (global)
 exports.getAllVariants = async () => {
@@ -34,20 +36,11 @@ exports.getAllVariants = async () => {
 
     FROM product_variants v
 
-    JOIN products p
-      ON v.product_id = p.id
-
-    LEFT JOIN categories c
-      ON p.category_id = c.id
-
-    LEFT JOIN variant_attributes va
-      ON v.id = va.variant_id
-
-    LEFT JOIN attribute_values av
-      ON va.attribute_value_id = av.id
-
-    LEFT JOIN attributes a
-      ON av.attribute_id = a.id
+    JOIN products p       ON v.product_id = p.id
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN variant_attributes va ON v.id = va.variant_id
+    LEFT JOIN attribute_values av   ON va.attribute_value_id = av.id
+    LEFT JOIN attributes a          ON av.attribute_id = a.id
 
     GROUP BY v.id, p.id, c.id
     ORDER BY v.id
@@ -89,20 +82,11 @@ exports.getVariantById = async (id) => {
 
     FROM product_variants v
 
-    JOIN products p
-      ON v.product_id = p.id
-
-    LEFT JOIN categories c
-      ON p.category_id = c.id
-
-    LEFT JOIN variant_attributes va
-      ON v.id = va.variant_id
-
-    LEFT JOIN attribute_values av
-      ON va.attribute_value_id = av.id
-
-    LEFT JOIN attributes a
-      ON av.attribute_id = a.id
+    JOIN products p       ON v.product_id = p.id
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN variant_attributes va ON v.id = va.variant_id
+    LEFT JOIN attribute_values av   ON va.attribute_value_id = av.id
+    LEFT JOIN attributes a          ON av.attribute_id = a.id
 
     WHERE v.id = $1
 
@@ -120,12 +104,6 @@ exports.getVariantById = async (id) => {
 
 
 // GET variants by product
-// ── FIX: was INNER JOIN on variant_attributes/attribute_values/attributes ──
-// INNER JOINs silently excluded variants that have no attribute rows yet.
-// Switched to LEFT JOINs (matching getAllVariants / getVariantById).
-// Also switched bare json_agg → COALESCE + FILTER so attribute-less variants
-// return [] instead of [{"attribute":null,"value":null}].
-// ──────────────────────────────────────────────────────────────────────────
 exports.getVariantsByProduct = async (productId) => {
   const result = await db.query(`
     SELECT 
@@ -146,14 +124,9 @@ exports.getVariantsByProduct = async (productId) => {
 
     FROM product_variants v
 
-    LEFT JOIN variant_attributes va
-      ON v.id = va.variant_id
-
-    LEFT JOIN attribute_values av
-      ON va.attribute_value_id = av.id
-
-    LEFT JOIN attributes a
-      ON av.attribute_id = a.id
+    LEFT JOIN variant_attributes va ON v.id = va.variant_id
+    LEFT JOIN attribute_values av   ON va.attribute_value_id = av.id
+    LEFT JOIN attributes a          ON av.attribute_id = a.id
 
     WHERE v.product_id = $1
 
@@ -161,12 +134,34 @@ exports.getVariantsByProduct = async (productId) => {
     ORDER BY v.id
   `, [productId]);
 
-  return result.rows; // returns [] naturally when no variants exist
+  return result.rows;
 };
 
 
-exports.updateVariant = async (id, data) => {
+/**
+ * Update a variant's price, barcode, and quantity.
+ * If quantity changes, the delta is recorded in inventory_transactions.
+ *
+ * @param {number} id
+ * @param {object} data      - { barcode, price, quantity }
+ * @param {number} [adminId] - req.user.id, recorded in inventory ledger
+ */
+exports.updateVariant = async (id, data, adminId = null) => {
   const { barcode, price, quantity } = data;
+
+  // Fetch existing quantity so we can calculate the delta
+  const existing = await db.query(
+    `SELECT quantity FROM product_variants WHERE id = $1`,
+    [id]
+  );
+
+  if (!existing.rows[0]) {
+    const err = new Error('Variant not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const oldQuantity = existing.rows[0].quantity;
 
   const result = await db.query(`
     UPDATE product_variants
@@ -181,6 +176,19 @@ exports.updateVariant = async (id, data) => {
     const err = new Error('Variant not found');
     err.status = 404;
     throw err;
+  }
+
+  // Record stock movement only when quantity actually changed
+  const delta = quantity - oldQuantity;
+
+  if (delta !== 0) {
+    await inventoryService.record({
+      variantId:     id,
+      change:        delta,
+      reason:        delta > 0 ? 'restock' : 'admin_edit',
+      referenceType: 'manual',
+      createdBy:     adminId,
+    });
   }
 
   return result.rows[0];
@@ -243,30 +251,22 @@ exports.createVariant = async (data) => {
   // Insert attribute links
   for (const attrValueId of attribute_value_ids) {
     await db.query(
-      `INSERT INTO variant_attributes (variant_id, attribute_value_id)
-       VALUES ($1, $2)`,
+      `INSERT INTO variant_attributes (variant_id, attribute_value_id) VALUES ($1, $2)`,
       [variant.id, attrValueId]
     );
   }
 
-  // Generate and attach SKU (requires attributes to exist first)
-  const sku = await generateSKU({
-    variantId: variant.id,
-    productId: product_id,
-  });
+  // Generate and attach SKU
+  const sku = await generateSKU({ variantId: variant.id, productId: product_id });
 
   const updated = await db.query(`
-    UPDATE product_variants
-    SET sku = $1
-    WHERE id = $2
-    RETURNING *
+    UPDATE product_variants SET sku = $1 WHERE id = $2 RETURNING *
   `, [sku, variant.id]);
 
   return updated.rows[0];
 };
 
 
-// DELETE variant
 exports.deleteVariant = async (id) => {
   const result = await db.query(
     `DELETE FROM product_variants WHERE id = $1 RETURNING *`,

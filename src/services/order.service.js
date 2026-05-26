@@ -1,30 +1,24 @@
-const db              = require('../config/db');
-const cartService     = require('./cart.service');
-const pricingService  = require('./pricing.service');
+const db               = require('../config/db');
+const cartService      = require('./cart.service');
+const pricingService   = require('./pricing.service');
 const promotionService = require('./promotion.service');
 const notificationService = require('./notification.service');
+const inventoryService = require('./inventory.service');
 
 // =========================================
 // STATE MACHINE
-// =========================================
-// Maps every status to the statuses it is
-// allowed to transition into.
-// Terminal states map to an empty array.
 // =========================================
 
 const TRANSITIONS = {
   pending:   ['paid', 'cancelled'],
   paid:      ['shipped', 'cancelled'],
-  shipped:   ['delivered'],           // no cancellation once shipped
+  shipped:   ['delivered'],
   delivered: [],
   cancelled: [],
 };
 
-// Statuses from which stock should be
-// restored when an order is cancelled.
 const RESTORE_STOCK_FROM = new Set(['pending', 'paid']);
 
-// User-facing notification copy per transition.
 const NOTIFICATION_COPY = {
   paid: {
     title:   'Order Confirmed',
@@ -48,15 +42,10 @@ const NOTIFICATION_COPY = {
 // HELPERS
 // =========================================
 
-/**
- * Validate that `toStatus` is a legal next
- * step from `fromStatus`. Throws 400 if not.
- */
 function assertValidTransition(fromStatus, toStatus) {
   const allowed = TRANSITIONS[fromStatus];
 
   if (allowed === undefined) {
-    // fromStatus is not in our machine at all
     const err = new Error(`Unknown order status: '${fromStatus}'`);
     err.status = 500;
     throw err;
@@ -74,11 +63,6 @@ function assertValidTransition(fromStatus, toStatus) {
   }
 }
 
-/**
- * Record a transition in order_status_history.
- * Accepts an optional pg client for use inside
- * a transaction; falls back to the pool.
- */
 async function recordHistory({
   client = db,
   orderId,
@@ -96,27 +80,47 @@ async function recordHistory({
 }
 
 /**
- * Restore stock for every item in an order.
- * Called inside a transaction (client required).
+ * Restore stock AND record inventory transactions.
+ * Must be called inside a transaction (client required).
+ *
+ * @param {*}      client
+ * @param {number} orderId
+ * @param {number} [changedBy] - user/admin id performing the cancellation
  */
-async function restoreStock(client, orderId) {
+async function restoreStock(client, orderId, changedBy = null) {
+  // Fetch items before updating so we can record each movement
+  const itemsRes = await client.query(
+    `SELECT product_variant_id AS variant_id, quantity
+     FROM order_items
+     WHERE order_id = $1`,
+    [orderId]
+  );
+
+  // Restore quantities
   await client.query(
     `UPDATE product_variants pv
      SET quantity = pv.quantity + oi.quantity
      FROM order_items oi
-     WHERE oi.order_id   = $1
+     WHERE oi.order_id = $1
        AND oi.product_variant_id = pv.id`,
     [orderId]
   );
+
+  // Record each restoration in the inventory ledger
+  await inventoryService.recordBulk({
+    client,
+    items:         itemsRes.rows,
+    multiplier:    +1,              // positive = stock returned
+    reason:        'cancellation',
+    referenceId:   orderId,
+    referenceType: 'order',
+    createdBy:     changedBy,
+  });
 }
 
-/**
- * Fire a notification to the order's owner.
- * Non-fatal — logs but does not crash on error.
- */
 async function notifyOwner(order, toStatus) {
   const copy = NOTIFICATION_COPY[toStatus];
-  if (!copy) return; // no copy defined → skip silently
+  if (!copy) return;
 
   try {
     await notificationService.createNotification({
@@ -127,7 +131,6 @@ async function notifyOwner(order, toStatus) {
       userIds:     [order.user_id],
     });
   } catch (notifErr) {
-    // Never let a notification failure abort the main flow
     console.error('[notifyOwner] failed:', notifErr.message);
   }
 }
@@ -154,9 +157,7 @@ exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
     // Validate stock
     for (const item of cart.items) {
       if (item.quantity > item.stock_quantity) {
-        const err = new Error(
-          `Insufficient stock for ${item.product_name}`
-        );
+        const err = new Error(`Insufficient stock for ${item.product_name}`);
         err.status = 400;
         throw err;
       }
@@ -212,6 +213,17 @@ exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
       );
     }
 
+    // Record stock deductions in inventory ledger
+    await inventoryService.recordBulk({
+      client,
+      items:         cart.items,
+      multiplier:    -1,            // negative = stock removed
+      reason:        'checkout',
+      referenceId:   order.id,
+      referenceType: 'order',
+      createdBy:     userId,
+    });
+
     // Record promotion usage
     await promotionService.recordPromotionUsage({
       client,
@@ -253,7 +265,6 @@ exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
 // =========================================
 
 exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => {
-  // 1. Fetch current order
   const orderRes = await db.query(
     `SELECT * FROM orders WHERE id = $1`,
     [orderId]
@@ -267,7 +278,6 @@ exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => 
     throw err;
   }
 
-  // 2. Validate transition
   assertValidTransition(order.status, toStatus);
 
   const client = await db.connect();
@@ -275,24 +285,16 @@ exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => 
   try {
     await client.query('BEGIN');
 
-    // 3. Update status
     const updated = await client.query(
-      `UPDATE orders
-       SET status = $1
-       WHERE id = $2
-       RETURNING *`,
+      `UPDATE orders SET status = $1 WHERE id = $2 RETURNING *`,
       [toStatus, orderId]
     );
 
-    // 4. Restore stock if cancelling from a restoreable state
-    if (
-      toStatus === 'cancelled' &&
-      RESTORE_STOCK_FROM.has(order.status)
-    ) {
-      await restoreStock(client, orderId);
+    // Restore stock (and record inventory) when cancelling a restoreable order
+    if (toStatus === 'cancelled' && RESTORE_STOCK_FROM.has(order.status)) {
+      await restoreStock(client, orderId, adminId);
     }
 
-    // 5. Record in history
     await recordHistory({
       client,
       orderId,
@@ -306,7 +308,6 @@ exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => 
 
     const updatedOrder = updated.rows[0];
 
-    // 6. Notify customer (outside transaction — non-fatal)
     await notifyOwner(updatedOrder, toStatus);
 
     return updatedOrder;
@@ -324,7 +325,6 @@ exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => 
 // =========================================
 
 exports.cancelOrder = async (orderId, userId) => {
-  // 1. Fetch order and verify ownership
   const orderRes = await db.query(
     `SELECT * FROM orders WHERE id = $1 AND user_id = $2`,
     [orderId, userId]
@@ -338,11 +338,9 @@ exports.cancelOrder = async (orderId, userId) => {
     throw err;
   }
 
-  // 2. Users may only cancel pending orders
   if (order.status !== 'pending') {
     const err = new Error(
-      `Only pending orders can be self-cancelled. ` +
-      `Current status: '${order.status}'.`
+      `Only pending orders can be self-cancelled. Current status: '${order.status}'.`
     );
     err.status = 400;
     throw err;
@@ -353,19 +351,14 @@ exports.cancelOrder = async (orderId, userId) => {
   try {
     await client.query('BEGIN');
 
-    // 3. Update status
     const updated = await client.query(
-      `UPDATE orders
-       SET status = 'cancelled'
-       WHERE id = $1
-       RETURNING *`,
+      `UPDATE orders SET status = 'cancelled' WHERE id = $1 RETURNING *`,
       [orderId]
     );
 
-    // 4. Restore stock (pending → cancelled always restores)
-    await restoreStock(client, orderId);
+    // Restore stock and record inventory transactions
+    await restoreStock(client, orderId, userId);
 
-    // 5. Record in history
     await recordHistory({
       client,
       orderId,
@@ -379,7 +372,6 @@ exports.cancelOrder = async (orderId, userId) => {
 
     const updatedOrder = updated.rows[0];
 
-    // 6. Notify (confirmation to the customer themselves)
     await notifyOwner(updatedOrder, 'cancelled');
 
     return updatedOrder;
@@ -397,7 +389,6 @@ exports.cancelOrder = async (orderId, userId) => {
 // =========================================
 
 exports.getOrderHistory = async (orderId, userId, isAdmin = false) => {
-  // Non-admin: verify ownership first
   if (!isAdmin) {
     const orderRes = await db.query(
       `SELECT id FROM orders WHERE id = $1 AND user_id = $2`,
@@ -426,11 +417,8 @@ exports.getOrderHistory = async (orderId, userId, isAdmin = false) => {
 
      FROM order_status_history osh
 
-     LEFT JOIN users u
-       ON osh.changed_by = u.id
-
-     LEFT JOIN roles r
-       ON u.role_id = r.id
+     LEFT JOIN users u ON osh.changed_by = u.id
+     LEFT JOIN roles r ON u.role_id = r.id
 
      WHERE osh.order_id = $1
 
@@ -447,13 +435,9 @@ exports.getOrderHistory = async (orderId, userId, isAdmin = false) => {
 
 exports.getMyOrders = async (userId) => {
   const result = await db.query(
-    `SELECT *
-     FROM orders
-     WHERE user_id = $1
-     ORDER BY created_at DESC`,
+    `SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC`,
     [userId]
   );
-
   return result.rows;
 };
 
@@ -463,9 +447,7 @@ exports.getMyOrders = async (userId) => {
 
 exports.getOrderById = async (orderId, userId) => {
   const orderRes = await db.query(
-    `SELECT *
-     FROM orders
-     WHERE id = $1 AND user_id = $2`,
+    `SELECT * FROM orders WHERE id = $1 AND user_id = $2`,
     [orderId, userId]
   );
 
@@ -487,17 +469,13 @@ exports.getOrderById = async (orderId, userId) => {
 
      FROM order_items oi
 
-     JOIN product_variants pv
-       ON oi.product_variant_id = pv.id
-
-     JOIN products p
-       ON pv.product_id = p.id
+     JOIN product_variants pv ON oi.product_variant_id = pv.id
+     JOIN products p          ON pv.product_id = p.id
 
      WHERE oi.order_id = $1`,
     [orderId]
   );
 
   order.items = itemsRes.rows;
-
   return order;
 };

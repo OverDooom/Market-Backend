@@ -4,8 +4,8 @@ const db = require('../config/db');
 exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
   const offset = (page - 1) * limit;
 
-  const values = [];
-  const conditions = [];
+  const values     = [];
+  const conditions = ['p.deleted_at IS NULL'];  // always exclude soft-deleted
 
   let query = `
     SELECT 
@@ -33,7 +33,7 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
       COUNT(DISTINCT v.id) AS variants_count,
 
       ROUND(AVG(r.rating), 1) AS average_rating,
-      COUNT(DISTINCT r.id) AS reviews_count,
+      COUNT(DISTINCT r.id)    AS reviews_count,
 
       CASE
         WHEN COALESCE(SUM(v.quantity), 0) > 0
@@ -55,13 +55,11 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
 
   if (search) {
     values.push(`%${search}%`);
-    conditions.push(`
-      (
-        p.name ILIKE $${values.length}
-        OR p.description ILIKE $${values.length}
-        OR p.brand ILIKE $${values.length}
-      )
-    `);
+    conditions.push(`(
+      p.name        ILIKE $${values.length}
+      OR p.description ILIKE $${values.length}
+      OR p.brand    ILIKE $${values.length}
+    )`);
   }
 
   if (category) {
@@ -69,22 +67,12 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
     conditions.push(`p.category_id = $${values.length}`);
   }
 
-  if (conditions.length > 0) {
-    query += ` WHERE ` + conditions.join(' AND ');
-  }
+  query += ` WHERE ${conditions.join(' AND ')}`;
 
-  query += `
-    GROUP BY p.id, c.id
-    ORDER BY p.id
-  `;
+  query += ` GROUP BY p.id, c.id ORDER BY p.id`;
 
-  values.push(limit);
-  values.push(offset);
-
-  query += `
-    LIMIT $${values.length - 1}
-    OFFSET $${values.length}
-  `;
+  values.push(limit, offset);
+  query += ` LIMIT $${values.length - 1} OFFSET $${values.length}`;
 
   const result = await db.query(query, values);
   return result.rows;
@@ -92,11 +80,6 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
 
 
 exports.getProductById = async (id) => {
-  // ── FIX: added GROUP BY p.id, c.id ──────────────────────────────────────
-  // The query uses AVG() and COUNT() aggregates, so every non-aggregate column
-  // must appear in GROUP BY.  p.id is the PK (covers all p.* columns in PG),
-  // c.id is the PK of categories (covers c.name inside json_build_object).
-  // ─────────────────────────────────────────────────────────────────────────
   const productResult = await db.query(`
     SELECT 
       p.id,
@@ -105,23 +88,18 @@ exports.getProductById = async (id) => {
       p.brand,
       p.created_at,
 
-      ROUND(AVG(r.rating), 1)  AS average_rating,
-      COUNT(DISTINCT r.id)     AS reviews_count,
+      ROUND(AVG(r.rating), 1) AS average_rating,
+      COUNT(DISTINCT r.id)    AS reviews_count,
 
-      json_build_object(
-        'id',   c.id,
-        'name', c.name
-      ) AS category
+      json_build_object('id', c.id, 'name', c.name) AS category
 
     FROM products p
 
-    LEFT JOIN categories c
-      ON p.category_id = c.id
-
-    LEFT JOIN reviews r
-      ON p.id = r.product_id
+    LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN reviews r    ON p.id = r.product_id
 
     WHERE p.id = $1
+      AND p.deleted_at IS NULL
 
     GROUP BY p.id, c.id
   `, [id]);
@@ -134,7 +112,6 @@ exports.getProductById = async (id) => {
 
   const product = productResult.rows[0];
 
-  // Variants query was already correct — LEFT JOINs + FILTER — no change needed
   const variantsResult = await db.query(`
     SELECT 
       v.id,
@@ -155,14 +132,9 @@ exports.getProductById = async (id) => {
 
     FROM product_variants v
 
-    LEFT JOIN variant_attributes va
-      ON v.id = va.variant_id
-
-    LEFT JOIN attribute_values av
-      ON va.attribute_value_id = av.id
-
-    LEFT JOIN attributes a
-      ON av.attribute_id = a.id
+    LEFT JOIN variant_attributes va ON v.id = va.variant_id
+    LEFT JOIN attribute_values av   ON va.attribute_value_id = av.id
+    LEFT JOIN attributes a          ON av.attribute_id = a.id
 
     WHERE v.product_id = $1
 
@@ -175,7 +147,11 @@ exports.getProductById = async (id) => {
 };
 
 
-exports.createProduct = async (data) => {
+/**
+ * @param {object} data
+ * @param {number} [adminId] - req.user.id from the controller
+ */
+exports.createProduct = async (data, adminId = null) => {
   const { name, description, brand, category_id } = data;
 
   const categoryCheck = await db.query(
@@ -190,34 +166,52 @@ exports.createProduct = async (data) => {
   }
 
   const result = await db.query(`
-    INSERT INTO products (name, description, brand, category_id)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO products (name, description, brand, category_id, created_by)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING *
-  `, [name, description, brand, category_id]);
+  `, [name, description, brand, category_id, adminId]);
 
   return result.rows[0];
 };
 
 
-exports.updateProduct = async (id, data) => {
+/**
+ * @param {number} id
+ * @param {object} data
+ * @param {number} [adminId] - req.user.id from the controller
+ */
+exports.updateProduct = async (id, data, adminId = null) => {
   const { name, description, brand, category_id } = data;
 
   const result = await db.query(`
     UPDATE products
-    SET name=$1, description=$2, brand=$3, category_id=$4
-    WHERE id=$5
+    SET name        = $1,
+        description = $2,
+        brand       = $3,
+        category_id = $4,
+        updated_by  = $5,
+        updated_at  = NOW()
+    WHERE id = $6
+      AND deleted_at IS NULL
     RETURNING *
-  `, [name, description, brand, category_id, id]);
+  `, [name, description, brand, category_id, adminId, id]);
 
-  return result.rows[0]; // undefined if not found
+  return result.rows[0]; // undefined if not found or soft-deleted
 };
 
 
+/**
+ * Soft delete — sets deleted_at instead of removing the row.
+ * Order history and variant records remain intact.
+ */
 exports.deleteProduct = async (id) => {
-  const result = await db.query(
-    `DELETE FROM products WHERE id = $1 RETURNING *`,
-    [id]
-  );
+  const result = await db.query(`
+    UPDATE products
+    SET deleted_at = NOW()
+    WHERE id = $1
+      AND deleted_at IS NULL
+    RETURNING *
+  `, [id]);
 
-  return result.rows[0]; // undefined if not found
+  return result.rows[0]; // undefined if not found / already deleted
 };

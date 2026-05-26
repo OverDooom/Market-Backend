@@ -1,7 +1,6 @@
 const variantService = require('../services/variant.service');
 
 
-// GET all variants
 exports.getAllVariants = async (req, res, next) => {
   try {
     const variants = await variantService.getAllVariants();
@@ -12,13 +11,12 @@ exports.getAllVariants = async (req, res, next) => {
 };
 
 
-// GET variant by ID
 exports.getVariantById = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-      const err = new Error("Invalid variant id");
+      const err = new Error('Invalid variant id');
       err.status = 400;
       throw err;
     }
@@ -31,13 +29,12 @@ exports.getVariantById = async (req, res, next) => {
 };
 
 
-// GET variants by product
 exports.getVariantsByProduct = async (req, res, next) => {
   try {
     const productId = parseInt(req.params.productId);
 
     if (isNaN(productId)) {
-      const err = new Error("Invalid product id");
+      const err = new Error('Invalid product id');
       err.status = 400;
       throw err;
     }
@@ -50,20 +47,21 @@ exports.getVariantsByProduct = async (req, res, next) => {
 };
 
 
-// CREATE variant
 exports.createVariant = async (req, res, next) => {
   try {
-    const {price} = req.body;
+    const { price } = req.body;
     const product_id = parseInt(req.params.productId);
 
     if (!product_id || !price) {
-      const err = new Error("product_id and price are required");
+      const err = new Error('product_id and price are required');
       err.status = 400;
       throw err;
     }
 
-
-    const newVariant = await variantService.createVariant({...req.body,product_id: parseInt(req.params.productId)});
+    const newVariant = await variantService.createVariant({
+      ...req.body,
+      product_id,
+    });
 
     res.status(201).json(newVariant);
   } catch (err) {
@@ -72,38 +70,41 @@ exports.createVariant = async (req, res, next) => {
 };
 
 
-// UPDATE variant
 exports.updateVariant = async (req, res, next) => {
   try {
     const id = parseInt(req.params.variantId);
 
     if (isNaN(id)) {
-      const err = new Error("Invalid variant id");
+      const err = new Error('Invalid variant id');
       err.status = 400;
       throw err;
     }
 
-    const updated = await variantService.updateVariant(id, req.body);
+    // Pass admin id so the inventory delta is attributed correctly
+    const updated = await variantService.updateVariant(
+      id,
+      req.body,
+      req.user?.id ?? null
+    );
+
     res.json(updated);
   } catch (err) {
     next(err);
   }
 };
 
-
-// DELETE variant
 exports.deleteVariant = async (req, res, next) => {
   try {
     const id = parseInt(req.params.variantId);
 
     if (isNaN(id)) {
-      const err = new Error("Invalid variant id");
+      const err = new Error('Invalid variant id');
       err.status = 400;
       throw err;
     }
 
     const deleted = await variantService.deleteVariant(id);
-    res.json({ message: "Variant deleted", data: deleted });
+    res.json({ message: 'Variant deleted', data: deleted });
   } catch (err) {
     next(err);
   }

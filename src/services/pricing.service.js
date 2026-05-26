@@ -1,36 +1,17 @@
-const promotionService =
-require('./promotion.service');
+const promotionService = require('./promotion.service');
 
 
 // =========================================
 // CALCULATE DISCOUNT
 // =========================================
 
-const calculateDiscount =
-({
-  promotion,
-  subtotal
-}) => {
-
-  if (
-    promotion.type === 'percentage'
-  ) {
-
-    return (
-      subtotal *
-      (
-        Number(promotion.value) / 100
-      )
-    );
+const calculateDiscount = ({ promotion, subtotal }) => {
+  if (promotion.type === 'percentage') {
+    return subtotal * (Number(promotion.value) / 100);
   }
 
-  if (
-    promotion.type === 'fixed'
-  ) {
-
-    return Number(
-      promotion.value
-    );
+  if (promotion.type === 'fixed') {
+    return Number(promotion.value);
   }
 
   return 0;
@@ -41,8 +22,7 @@ const calculateDiscount =
 // CALCULATE CART
 // =========================================
 
-exports.calculateCart =
-async ({
+exports.calculateCart = async ({
   client,
   userId,
   items,
@@ -56,11 +36,7 @@ async ({
   let subtotal = 0;
 
   for (const item of items) {
-
-    subtotal += (
-      Number(item.price) *
-      item.quantity
-    );
+    subtotal += Number(item.price) * item.quantity;
   }
 
   // =====================================
@@ -70,136 +46,82 @@ async ({
   const promotions = [];
 
   const automaticPromotions =
-    await promotionService
-    .getAutomaticPromotions(client);
+    await promotionService.getAutomaticPromotions(client);
 
-  promotions.push(
-    ...automaticPromotions
-  );
+  promotions.push(...automaticPromotions);
 
   for (const code of couponCodes) {
-
-    const coupon =
-      await promotionService
-      .validateCoupon(code, client);
-
+    const coupon = await promotionService.validateCoupon(code, client);
     promotions.push(coupon);
   }
 
   // =====================================
-  // VALID PROMOTIONS
+  // FILTER VALID PROMOTIONS
   // =====================================
 
   const validPromotions = [];
 
   for (const promotion of promotions) {
-
-    const valid =
-      await promotionService
-      .validatePromotionConditions({
-        promotion,
-        userId,
-        subtotal
-      }, client);
+    const valid = await promotionService.validatePromotionConditions(
+      { promotion, userId, subtotal },
+      client
+    );
 
     if (valid) {
-      validPromotions.push(
-        promotion
-      );
+      validPromotions.push(promotion);
     }
   }
 
   // =====================================
-  // STACKABLE LOGIC
+  // STACKABLE / NON-STACKABLE SPLIT
   // =====================================
 
-  const nonStackable =
-    validPromotions.filter(
-      p => !p.stackable
+  const nonStackable = validPromotions.filter(p => !p.stackable);
+  const stackable    = validPromotions.filter(p =>  p.stackable);
+
+  // =====================================
+  // PICK BEST NON-STACKABLE
+  // =====================================
+
+  let bestPromo    = null;
+  let bestDiscount = 0;
+
+  for (const promo of nonStackable) {
+    const eligibleItems = await promotionService.getEligibleItems(
+      promo, items, client
     );
 
-  const stackable =
-    validPromotions.filter(
-      p => p.stackable
-    );
-
-  let finalPromotions = [];
-/*
-  // highest non-stackable
-  if (nonStackable.length > 0) {
-
-    let bestPromo = null;
-    let bestDiscount = 0;
-
-    for (const promo of nonStackable) {
-
-      const eligibleItems =
-        await promotionService
-        .getEligibleItems(
-          promo,
-          items,
-          client
-        );
-
-      let eligibleSubtotal = 0;
-
-      for (const item of eligibleItems) {
-
-        eligibleSubtotal += (
-          Number(item.price) *
-          item.quantity
-        );
-      }
-
-      const discount =
-        calculateDiscount({
-          promotion: promo,
-          subtotal: eligibleSubtotal
-        });
-
-      if (
-        discount > bestDiscount
-      ) {
-
-        bestDiscount = discount;
-        bestPromo = promo;
-      }
+    let eligibleSubtotal = 0;
+    for (const item of eligibleItems) {
+      eligibleSubtotal += Number(item.price) * item.quantity;
     }
 
-    if (bestPromo) {
-      finalPromotions.push(
-        bestPromo
-      );
+    const discount = calculateDiscount({
+      promotion: promo,
+      subtotal:  eligibleSubtotal
+    });
+
+    if (discount > bestDiscount) {
+      bestDiscount = discount;
+      bestPromo    = promo;
     }
-
-  } else {
-
-    finalPromotions.push(
-      ...stackable
-    );
   }
-*/
+
+  // =====================================
+  // BUILD FINAL PROMOTIONS LIST
+  // =====================================
+
+  // If there are non-stackable promos, take only the best one.
+  // Stackable promos never compete with each other — all apply.
+  // Non-stackable beats stackable; if no non-stackable exists,
+  // all stackable promos apply together.
+
+  let finalPromotions;
+
   if (nonStackable.length > 0) {
-    // pick single best non-stackable only
-    finalPromotions = [bestPromo];
+    finalPromotions = bestPromo ? [bestPromo] : [];
   } else {
-    // all stackable promos apply together
     finalPromotions = stackable;
-  }
-
-  // if chosen promo is stackable
-  if (
-    finalPromotions.length > 0 &&
-    finalPromotions[0].stackable
-  ) {
-
-    finalPromotions.push(
-      ...stackable.filter(
-        p =>
-          p.id !==
-          finalPromotions[0].id
-      )
-    );
   }
 
   // =====================================
@@ -207,61 +129,35 @@ async ({
   // =====================================
 
   const discounts = [];
-
   let discountTotal = 0;
 
   for (const promotion of finalPromotions) {
-
-    const eligibleItems =
-      await promotionService
-      .getEligibleItems(
-        promotion,
-        items,
-        client
-      );
+    const eligibleItems = await promotionService.getEligibleItems(
+      promotion, items, client
+    );
 
     let eligibleSubtotal = 0;
-
     for (const item of eligibleItems) {
-
-      eligibleSubtotal += (
-        Number(item.price) *
-        item.quantity
-      );
+      eligibleSubtotal += Number(item.price) * item.quantity;
     }
 
-    if (eligibleSubtotal <= 0) {
-      continue;
-    }
+    if (eligibleSubtotal <= 0) continue;
 
-    let discount =
-      calculateDiscount({
-        promotion,
-        subtotal: eligibleSubtotal
-      });
+    let discount = calculateDiscount({
+      promotion,
+      subtotal: eligibleSubtotal
+    });
 
     // prevent over-discount
-    discount = Math.min(
-      discount,
-      eligibleSubtotal
-    );
+    discount = Math.min(discount, eligibleSubtotal);
 
     discountTotal += discount;
 
     discounts.push({
-      promotion_id:
-        promotion.id,
-
-      coupon_id:
-        promotion.coupon_id || null,
-
-      name:
-        promotion.name,
-
-      amount:
-        Number(
-          discount.toFixed(2)
-        )
+      promotion_id: promotion.id,
+      coupon_id:    promotion.coupon_id || null,
+      name:         promotion.name,
+      amount:       Number(discount.toFixed(2))
     });
   }
 
@@ -269,29 +165,12 @@ async ({
   // FINAL TOTAL
   // =====================================
 
-  const total =
-    Math.max(
-      0,
-      subtotal - discountTotal
-    );
+  const total = Math.max(0, subtotal - discountTotal);
 
   return {
-
-    subtotal:
-      Number(
-        subtotal.toFixed(2)
-      ),
-
-    discount_total:
-      Number(
-        discountTotal.toFixed(2)
-      ),
-
-    total:
-      Number(
-        total.toFixed(2)
-      ),
-
+    subtotal:       Number(subtotal.toFixed(2)),
+    discount_total: Number(discountTotal.toFixed(2)),
+    total:          Number(total.toFixed(2)),
     discounts
   };
 };
