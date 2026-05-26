@@ -14,7 +14,14 @@ router.get('/', auth, orderController.getMyOrders);
 // GET SINGLE ORDER
 router.get('/:id', auth, orderController.getOrderById);
 
-// ADMIN UPDATE STATUS
+// GET STATUS HISTORY  (owner or admin — service enforces ownership)
+router.get('/:id/history', auth, orderController.getOrderHistory);
+
+// USER — CANCEL OWN PENDING ORDER
+router.post('/:id/cancel', auth, orderController.cancelOrder);
+
+// ADMIN — ADVANCE / CHANGE STATUS
+// Body: { "status": "shipped", "notes": "Tracking #XYZ" }
 router.put(
   '/:id/status',
   auth,

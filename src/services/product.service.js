@@ -1,4 +1,3 @@
-// src/services/product.service.js
 const db = require('../config/db');
 
 
@@ -54,10 +53,8 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
       ON p.id = r.product_id
   `;
 
-  // SEARCH
   if (search) {
     values.push(`%${search}%`);
-
     conditions.push(`
       (
         p.name ILIKE $${values.length}
@@ -67,16 +64,11 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
     `);
   }
 
-  // CATEGORY FILTER
   if (category) {
     values.push(category);
-
-    conditions.push(`
-      p.category_id = $${values.length}
-    `);
+    conditions.push(`p.category_id = $${values.length}`);
   }
 
-  // APPLY CONDITIONS
   if (conditions.length > 0) {
     query += ` WHERE ` + conditions.join(' AND ');
   }
@@ -86,24 +78,25 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
     ORDER BY p.id
   `;
 
-  // PAGINATION
   values.push(limit);
   values.push(offset);
- 
-  
+
   query += `
     LIMIT $${values.length - 1}
     OFFSET $${values.length}
   `;
 
   const result = await db.query(query, values);
-
   return result.rows;
 };
 
 
 exports.getProductById = async (id) => {
-  // 1. Get product
+  // ── FIX: added GROUP BY p.id, c.id ──────────────────────────────────────
+  // The query uses AVG() and COUNT() aggregates, so every non-aggregate column
+  // must appear in GROUP BY.  p.id is the PK (covers all p.* columns in PG),
+  // c.id is the PK of categories (covers c.name inside json_build_object).
+  // ─────────────────────────────────────────────────────────────────────────
   const productResult = await db.query(`
     SELECT 
       p.id,
@@ -112,11 +105,11 @@ exports.getProductById = async (id) => {
       p.brand,
       p.created_at,
 
-      ROUND(AVG(r.rating), 1) AS average_rating,
-      COUNT(DISTINCT r.id) AS reviews_count,
+      ROUND(AVG(r.rating), 1)  AS average_rating,
+      COUNT(DISTINCT r.id)     AS reviews_count,
 
       json_build_object(
-        'id', c.id,
+        'id',   c.id,
         'name', c.name
       ) AS category
 
@@ -129,17 +122,19 @@ exports.getProductById = async (id) => {
       ON p.id = r.product_id
 
     WHERE p.id = $1
+
+    GROUP BY p.id, c.id
   `, [id]);
 
   if (productResult.rows.length === 0) {
-    const err = new Error("Product not found");
+    const err = new Error('Product not found');
     err.status = 404;
     throw err;
   }
 
   const product = productResult.rows[0];
 
-  // 2. Get variants
+  // Variants query was already correct — LEFT JOINs + FILTER — no change needed
   const variantsResult = await db.query(`
     SELECT 
       v.id,
@@ -152,7 +147,7 @@ exports.getProductById = async (id) => {
         json_agg(
           DISTINCT jsonb_build_object(
             'attribute', a.name,
-            'value', av.value
+            'value',     av.value
           )
         ) FILTER (WHERE a.id IS NOT NULL),
         '[]'
@@ -175,23 +170,22 @@ exports.getProductById = async (id) => {
     ORDER BY v.id
   `, [id]);
 
-  // 3. Attach variants
   product.variants = variantsResult.rows;
-
   return product;
 };
+
 
 exports.createProduct = async (data) => {
   const { name, description, brand, category_id } = data;
 
   const categoryCheck = await db.query(
-    `SELECT id FROM categories WHERE id=$1`,
+    `SELECT id FROM categories WHERE id = $1`,
     [category_id]
   );
 
   if (categoryCheck.rows.length === 0) {
-    const err = new Error("category_id does not exist");
-    err.status = 404; 
+    const err = new Error('category_id does not exist');
+    err.status = 404;
     throw err;
   }
 
@@ -204,6 +198,7 @@ exports.createProduct = async (data) => {
   return result.rows[0];
 };
 
+
 exports.updateProduct = async (id, data) => {
   const { name, description, brand, category_id } = data;
 
@@ -213,12 +208,14 @@ exports.updateProduct = async (id, data) => {
     WHERE id=$5
     RETURNING *
   `, [name, description, brand, category_id, id]);
+
   return result.rows[0]; // undefined if not found
 };
 
+
 exports.deleteProduct = async (id) => {
   const result = await db.query(
-    `DELETE FROM products WHERE id=$1 RETURNING *`,
+    `DELETE FROM products WHERE id = $1 RETURNING *`,
     [id]
   );
 

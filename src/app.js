@@ -22,6 +22,7 @@ const reviewRoutes = require('./routes/review.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const addressRoutes = require('./routes/address.routes');
 const pricingRoutes = require('./routes/pricing.routes');
+const wishlistRoutes = require('./routes/wishlist.routes');
 
 
 app.use(express.json());
@@ -36,6 +37,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/pricing', pricingRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 
 app.use(errorMiddleware);

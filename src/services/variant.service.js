@@ -12,12 +12,12 @@ exports.getAllVariants = async () => {
       v.quantity,
 
       json_build_object(
-        'id', p.id,
-        'name', p.name,
+        'id',          p.id,
+        'name',        p.name,
         'description', p.description,
-        'brand', p.brand,
+        'brand',       p.brand,
         'category', json_build_object(
-          'id', c.id,
+          'id',   c.id,
           'name', c.name
         )
       ) AS product,
@@ -26,7 +26,7 @@ exports.getAllVariants = async () => {
         json_agg(
           DISTINCT jsonb_build_object(
             'attribute', a.name,
-            'value', av.value
+            'value',     av.value
           )
         ) FILTER (WHERE a.id IS NOT NULL),
         '[]'
@@ -34,7 +34,7 @@ exports.getAllVariants = async () => {
 
     FROM product_variants v
 
-    JOIN products p 
+    JOIN products p
       ON v.product_id = p.id
 
     LEFT JOIN categories c
@@ -56,6 +56,7 @@ exports.getAllVariants = async () => {
   return result.rows;
 };
 
+
 // GET variant by ID
 exports.getVariantById = async (id) => {
   const result = await db.query(`
@@ -67,11 +68,11 @@ exports.getVariantById = async (id) => {
       v.quantity,
 
       json_build_object(
-        'id', p.id,
-        'name', p.name,
-        'brand', p.brand,
+        'id',      p.id,
+        'name',    p.name,
+        'brand',   p.brand,
         'category', json_build_object(
-          'id', c.id,
+          'id',   c.id,
           'name', c.name
         )
       ) AS product,
@@ -80,7 +81,7 @@ exports.getVariantById = async (id) => {
         json_agg(
           DISTINCT jsonb_build_object(
             'attribute', a.name,
-            'value', av.value
+            'value',     av.value
           )
         ) FILTER (WHERE a.id IS NOT NULL),
         '[]'
@@ -88,7 +89,8 @@ exports.getVariantById = async (id) => {
 
     FROM product_variants v
 
-    JOIN products p ON v.product_id = p.id
+    JOIN products p
+      ON v.product_id = p.id
 
     LEFT JOIN categories c
       ON p.category_id = c.id
@@ -108,7 +110,7 @@ exports.getVariantById = async (id) => {
   `, [id]);
 
   if (result.rows.length === 0) {
-    const err = new Error("Variant not found");
+    const err = new Error('Variant not found');
     err.status = 404;
     throw err;
   }
@@ -117,6 +119,13 @@ exports.getVariantById = async (id) => {
 };
 
 
+// GET variants by product
+// ── FIX: was INNER JOIN on variant_attributes/attribute_values/attributes ──
+// INNER JOINs silently excluded variants that have no attribute rows yet.
+// Switched to LEFT JOINs (matching getAllVariants / getVariantById).
+// Also switched bare json_agg → COALESCE + FILTER so attribute-less variants
+// return [] instead of [{"attribute":null,"value":null}].
+// ──────────────────────────────────────────────────────────────────────────
 exports.getVariantsByProduct = async (productId) => {
   const result = await db.query(`
     SELECT 
@@ -124,39 +133,52 @@ exports.getVariantsByProduct = async (productId) => {
       v.sku,
       v.price,
       v.quantity,
-      json_agg(
-        json_build_object(
-          'attribute', a.name,
-          'value', av.value
-        )
+
+      COALESCE(
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'attribute', a.name,
+            'value',     av.value
+          )
+        ) FILTER (WHERE a.id IS NOT NULL),
+        '[]'
       ) AS attributes
+
     FROM product_variants v
-    JOIN variant_attributes va ON v.id = va.variant_id
-    JOIN attribute_values av ON va.attribute_value_id = av.id
-    JOIN attributes a ON av.attribute_id = a.id
+
+    LEFT JOIN variant_attributes va
+      ON v.id = va.variant_id
+
+    LEFT JOIN attribute_values av
+      ON va.attribute_value_id = av.id
+
+    LEFT JOIN attributes a
+      ON av.attribute_id = a.id
+
     WHERE v.product_id = $1
+
     GROUP BY v.id
+    ORDER BY v.id
   `, [productId]);
 
-  if (result.rows.length === 0) return [];
-
-  return result.rows;
+  return result.rows; // returns [] naturally when no variants exist
 };
+
 
 exports.updateVariant = async (id, data) => {
   const { barcode, price, quantity } = data;
 
   const result = await db.query(`
     UPDATE product_variants
-    SET barcode = $1,
-        price = $2,
+    SET barcode  = $1,
+        price    = $2,
         quantity = $3
     WHERE id = $4
     RETURNING *
   `, [barcode, price, quantity, id]);
 
   if (!result.rows[0]) {
-    const err = new Error("Variant not found");
+    const err = new Error('Variant not found');
     err.status = 404;
     throw err;
   }
@@ -164,35 +186,34 @@ exports.updateVariant = async (id, data) => {
   return result.rows[0];
 };
 
+
 exports.createVariant = async (data) => {
   const { product_id, barcode, price, quantity, attribute_value_ids } = data;
 
-  // 1. Validate input
   if (!attribute_value_ids || attribute_value_ids.length === 0) {
-    const err = new Error("attribute_value_ids are required");
+    const err = new Error('attribute_value_ids are required');
     err.status = 400;
     throw err;
   }
 
   if (quantity == null || quantity < 0) {
-  const err = new Error("quantity is required and must be >= 0");
-  err.status = 400;
-  throw err;
+    const err = new Error('quantity is required and must be >= 0');
+    err.status = 400;
+    throw err;
   }
 
-  // 2. Check product exists
   const product = await db.query(
     `SELECT id FROM products WHERE id = $1`,
     [product_id]
   );
 
   if (product.rows.length === 0) {
-    const err = new Error("product_id does not exist");
+    const err = new Error('product_id does not exist');
     err.status = 404;
     throw err;
   }
 
-    // 3. Check for duplicate variant BEFORE inserting
+  // Check for duplicate variant (same attribute combination)
   const sorted = [...attribute_value_ids].sort((a, b) => a - b);
 
   const existing = await db.query(`
@@ -205,24 +226,21 @@ exports.createVariant = async (data) => {
   `, [product_id, sorted]);
 
   if (existing.rows.length > 0) {
-    const err = new Error("A variant with these attributes already exists");
+    const err = new Error('A variant with these attributes already exists');
     err.status = 400;
     throw err;
   }
 
-  // 4. Create variant WITHOUT SKU first
+  // Create variant without SKU first
   const variantRes = await db.query(`
-    INSERT INTO product_variants
-    (product_id, barcode, price, quantity)
+    INSERT INTO product_variants (product_id, barcode, price, quantity)
     VALUES ($1, $2, $3, $4)
     RETURNING *
   `, [product_id, barcode, price, quantity]);
 
   const variant = variantRes.rows[0];
 
-
-
-  // 5. Insert into variant_attributes
+  // Insert attribute links
   for (const attrValueId of attribute_value_ids) {
     await db.query(
       `INSERT INTO variant_attributes (variant_id, attribute_value_id)
@@ -231,13 +249,12 @@ exports.createVariant = async (data) => {
     );
   }
 
-  // 6. Generate SKU (after attributes exist)
+  // Generate and attach SKU (requires attributes to exist first)
   const sku = await generateSKU({
     variantId: variant.id,
-    productId: product_id
+    productId: product_id,
   });
 
-  // 7. Update variant with SKU
   const updated = await db.query(`
     UPDATE product_variants
     SET sku = $1
@@ -248,6 +265,7 @@ exports.createVariant = async (data) => {
   return updated.rows[0];
 };
 
+
 // DELETE variant
 exports.deleteVariant = async (id) => {
   const result = await db.query(
@@ -256,7 +274,7 @@ exports.deleteVariant = async (id) => {
   );
 
   if (!result.rows[0]) {
-    const err = new Error("Variant not found");
+    const err = new Error('Variant not found');
     err.status = 404;
     throw err;
   }
