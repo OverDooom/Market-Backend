@@ -15,8 +15,10 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node src/server.js"
+    "dev": "node src/server.js",
+    "test": "jest --runInBand --detectOpenHandles --silent",
+    "test:watch": "jest --watch"
+
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -29,5 +31,9 @@
     "mysql2": "^3.20.0",
     "pg": "^8.20.0",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
   }
 }
