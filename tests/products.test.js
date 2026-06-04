@@ -1,6 +1,24 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { adminToken, userToken } = require('./helpers/auth');
+const db = require('../src/config/db');
+
+let seededProductId;
+
+beforeAll(async () => {
+  // Ensure category 1 exists
+  await db.query(`INSERT INTO categories (id, name) VALUES (1, 'Test Category') ON CONFLICT DO NOTHING`);
+  // Insert a fresh product for tests that need id-based access
+  const res = await db.query(
+    `INSERT INTO products (name, description, brand, category_id) VALUES ('Test Product', 'desc', 'Brand', 1) RETURNING id`
+  );
+  seededProductId = res.rows[0].id;
+});
+
+afterAll(async () => {
+  await db.query(`DELETE FROM products WHERE id = $1`, [seededProductId]);
+  await db.end();
+});
 
 describe('Products', () => {
 
@@ -58,7 +76,7 @@ test('rejects search injection attempts', async () => {
 test('returns single product', async () => {
 
   const res = await request(app)
-    .get('/api/products/1');
+    .get(`/api/products/${seededProductId}`);
 
   expect(res.status).toBe(200);
 
@@ -207,7 +225,7 @@ test('returns 404 when product missing', async () => {
 test('updates product', async () => {
 
   const res = await request(app)
-    .put('/api/products/1')
+    .put(`/api/products/${seededProductId}`)
     .set(
       'Authorization',
       `Bearer ${adminToken()}`
@@ -223,7 +241,7 @@ test('updates product', async () => {
 test('rejects invalid category update', async () => {
 
   const res = await request(app)
-    .put('/api/products/1')
+    .put(`/api/products/${seededProductId}`)
     .set(
       'Authorization',
       `Bearer ${adminToken()}`
@@ -263,7 +281,7 @@ test('returns 404 for missing product', async () => {
 test('soft deletes product', async () => {
 
   const res = await request(app)
-    .delete('/api/products/1')
+    .delete(`/api/products/${seededProductId}`)
     .set(
       'Authorization',
       `Bearer ${adminToken()}`
@@ -278,14 +296,14 @@ test('soft deletes product', async () => {
 test('cannot delete already deleted product', async () => {
 
   await request(app)
-    .delete('/api/products/1')
+    .delete(`/api/products/${seededProductId}`)
     .set(
       'Authorization',
       `Bearer ${adminToken()}`
     );
 
   const res = await request(app)
-    .delete('/api/products/1')
+    .delete(`/api/products/${seededProductId}`)
     .set(
       'Authorization',
       `Bearer ${adminToken()}`

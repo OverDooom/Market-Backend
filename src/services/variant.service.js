@@ -149,9 +149,9 @@ exports.getVariantsByProduct = async (productId) => {
 exports.updateVariant = async (id, data, adminId = null) => {
   const { barcode, price, quantity } = data;
 
-  // Fetch existing quantity so we can calculate the delta
+  // Fetch existing variant so we can calculate the delta
   const existing = await db.query(
-    `SELECT quantity FROM product_variants WHERE id = $1`,
+    `SELECT * FROM product_variants WHERE id = $1`,
     [id]
   );
 
@@ -161,7 +161,8 @@ exports.updateVariant = async (id, data, adminId = null) => {
     throw err;
   }
 
-  const oldQuantity = existing.rows[0].quantity;
+  const old = existing.rows[0];
+  const oldQuantity = old.quantity;
 
   const result = await db.query(`
     UPDATE product_variants
@@ -170,7 +171,12 @@ exports.updateVariant = async (id, data, adminId = null) => {
         quantity = $3
     WHERE id = $4
     RETURNING *
-  `, [barcode, price, quantity, id]);
+  `, [
+    barcode  ?? old.barcode,
+    price    ?? old.price,
+    quantity ?? old.quantity,
+    id
+  ]);
 
   if (!result.rows[0]) {
     const err = new Error('Variant not found');
@@ -179,7 +185,7 @@ exports.updateVariant = async (id, data, adminId = null) => {
   }
 
   // Record stock movement only when quantity actually changed
-  const delta = quantity - oldQuantity;
+  const delta = (quantity ?? oldQuantity) - oldQuantity;
 
   if (delta !== 0) {
     await inventoryService.record({
@@ -268,16 +274,25 @@ exports.createVariant = async (data) => {
 
 
 exports.deleteVariant = async (id) => {
-  const result = await db.query(
-    `DELETE FROM product_variants WHERE id = $1 RETURNING *`,
-    [id]
-  );
+  try {
+    const result = await db.query(
+      `DELETE FROM product_variants WHERE id = $1 RETURNING *`,
+      [id]
+    );
 
-  if (!result.rows[0]) {
-    const err = new Error('Variant not found');
-    err.status = 404;
+    if (!result.rows[0]) {
+      const err = new Error('Variant not found');
+      err.status = 404;
+      throw err;
+    }
+
+    return result.rows[0];
+  } catch (err) {
+    if (err.code === '23503') {
+      const e = new Error('Cannot delete variant: it is referenced by existing cart or order items');
+      e.status = 409;
+      throw e;
+    }
     throw err;
   }
-
-  return result.rows[0];
 };

@@ -1,6 +1,8 @@
 const db                    = require('../config/db');
 const jwtUtils              = require('../utils/jwt');
 const { hashPassword, comparePassword } = require('../utils/hash');
+const { randomUUID }        = require('crypto');
+
 
 // =========================================
 // HELPERS
@@ -104,7 +106,7 @@ exports.login = async ({ email, password }) => {
   }
 
   // Each login starts a new token family (fresh UUID)
-  const { randomUUID } = require('crypto');
+
   const familyId = randomUUID();
 
   const { accessToken, refreshToken } = await createTokenPair(

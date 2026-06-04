@@ -16,9 +16,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "node src/server.js",
-    "test": "jest --runInBand --detectOpenHandles --silent",
+    "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --verbose",
     "test:watch": "jest --watch"
-
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -33,6 +32,7 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "jest": "^30.4.2",
     "supertest": "^7.2.2"
   }

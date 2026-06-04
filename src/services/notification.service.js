@@ -49,17 +49,19 @@ exports.createNotification = async ({
   }
 
 
-    const { getIO } = require('../socket/socket');
+    try {
+      const { getIO } = require('../socket/socket');
+      const io = getIO();
 
-    const io = getIO();
-
-    for (const userId of userIds) {
-
-    io.to(`user_${userId}`)
-        .emit('notification', {
+      for (const userId of userIds) {
+        io.to(`user_${userId}`)
+          .emit('notification', {
             ...notification,
             is_read: false
-        });
+          });
+      }
+    } catch (_) {
+      // socket not initialized (e.g. test environment)
     }
 
   return notification;

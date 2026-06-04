@@ -1,8 +1,44 @@
 const request = require('supertest');
 const app = require('../src/app');
 const { adminToken, userToken } = require('./helpers/auth');
+const db = require('../src/config/db');
 
-describe('Products', () => {
+let testAttrValueId1;
+let testAttrValueId2;
+let testAttrValueId3;
+let testAttrValueId4;
+
+beforeAll(async () => {
+  await db.query(`INSERT INTO categories (id, name) VALUES (1, 'Test Category') ON CONFLICT DO NOTHING`);
+  await db.query(`INSERT INTO attributes (id, name) VALUES (1, 'Size') ON CONFLICT DO NOTHING`);
+  const r1 = await db.query(
+    `INSERT INTO attribute_values (attribute_id, value, code) VALUES (1, 'TestA', 'TESTA') RETURNING id`
+  );
+  const r2 = await db.query(
+    `INSERT INTO attribute_values (attribute_id, value, code) VALUES (1, 'TestB', 'TESTB') RETURNING id`
+  );
+
+  const r3 = await db.query(
+  `INSERT INTO attribute_values (attribute_id, value, code) VALUES (1, 'TestC', 'TESTC') RETURNING id`
+);
+const r4 = await db.query(
+  `INSERT INTO attribute_values (attribute_id, value, code) VALUES (1, 'TestD', 'TESTD') RETURNING id`
+);
+
+  testAttrValueId1 = r1.rows[0].id;
+  testAttrValueId2 = r2.rows[0].id;
+  testAttrValueId3 = r3.rows[0].id;
+  testAttrValueId4 = r4.rows[0].id;
+
+});
+
+afterAll(async () => {
+  await db.query(`DELETE FROM attribute_values WHERE id IN ($1, $2, $3, $4)`, [testAttrValueId1, testAttrValueId2, testAttrValueId3, testAttrValueId4]);
+
+  await db.end();
+});
+
+describe('Variants', () => {
 
     test('returns all variants', async () => {
   const res = await request(app)
@@ -95,7 +131,7 @@ test('requires price', async () => {
     )
     .send({
       quantity: 10,
-      attribute_value_ids: [1]
+      attribute_value_ids: [testAttrValueId1]
     });
 
   expect(res.status).toBe(400);
@@ -148,7 +184,7 @@ test('rejects negative quantity', async () => {
     .send({
       price: 10,
       quantity: -1,
-      attribute_value_ids: [1]
+      attribute_value_ids: [testAttrValueId1]
     });
 
   expect(res.status).toBe(400);
@@ -166,7 +202,7 @@ test('rejects invalid product', async () => {
     .send({
       price: 10,
       quantity: 5,
-      attribute_value_ids: [1]
+      attribute_value_ids: [testAttrValueId1]
     });
 
   expect(res.status).toBe(404);
@@ -185,7 +221,7 @@ test('creates variant', async () => {
       barcode: '123456',
       price: 10,
       quantity: 20,
-      attribute_value_ids: [1]
+      attribute_value_ids: [testAttrValueId1]
     });
 
   expect(res.status).toBe(201);
@@ -200,7 +236,7 @@ test('rejects duplicate variant combination', async () => {
   const payload = {
     price: 10,
     quantity: 20,
-    attribute_value_ids: [1,2]
+    attribute_value_ids: [testAttrValueId1, testAttrValueId2]
   };
 
   await request(app)
@@ -234,7 +270,7 @@ test('detects duplicate regardless of attribute order', async () => {
     .send({
       price: 10,
       quantity: 10,
-      attribute_value_ids: [1,2]
+      attribute_value_ids: [testAttrValueId1, testAttrValueId2]
     });
 
   const res = await request(app)
@@ -246,7 +282,7 @@ test('detects duplicate regardless of attribute order', async () => {
     .send({
       price: 10,
       quantity: 10,
-      attribute_value_ids: [2,1]
+      attribute_value_ids: [testAttrValueId2, testAttrValueId1]
     });
 
   expect(res.status).toBe(400);
@@ -410,38 +446,38 @@ test('returns 404 when deleting unknown variant', async () => {
 
 test('deletes variant', async () => {
 
+  // Create a fresh variant so we're not hitting one with FK references
+  const created = await request(app)
+    .post('/api/products/1/variants')
+    .set('Authorization', `Bearer ${adminToken()}`)
+    .send({ price: 5, quantity: 1, attribute_value_ids: [testAttrValueId3] });
+
+
   const res = await request(app)
-    .delete('/api/products/1/variants/1')
-    .set(
-      'Authorization',
-      `Bearer ${adminToken()}`
-    );
+    .delete(`/api/products/1/variants/${created.body.id}`)
+    .set('Authorization', `Bearer ${adminToken()}`);
 
   expect(res.status).toBe(200);
-
-  expect(res.body.message)
-    .toBe('Variant deleted');
-
+  expect(res.body.message).toBe('Variant deleted');
 });
 
 test('cannot delete same variant twice', async () => {
 
+  const created = await request(app)
+    .post('/api/products/1/variants')
+    .set('Authorization', `Bearer ${adminToken()}`)
+    .send({ price: 5, quantity: 1, attribute_value_ids: [testAttrValueId4] });
+
+
   await request(app)
-    .delete('/api/products/1/variants/1')
-    .set(
-      'Authorization',
-      `Bearer ${adminToken()}`
-    );
+    .delete(`/api/products/1/variants/${created.body.id}`)
+    .set('Authorization', `Bearer ${adminToken()}`);
 
   const res = await request(app)
-    .delete('/api/products/1/variants/1')
-    .set(
-      'Authorization',
-      `Bearer ${adminToken()}`
-    );
+    .delete(`/api/products/1/variants/${created.body.id}`)
+    .set('Authorization', `Bearer ${adminToken()}`);
 
   expect(res.status).toBe(404);
-
 });
 
 test('updating only price should not null quantity', async () => {

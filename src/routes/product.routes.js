@@ -8,28 +8,6 @@ const auth = require('../middleware/auth.middleware');
 const role = require('../middleware/role.middleware');
 
 
-////////////////////////////////////////////////////
-const { generateToken } = require('../utils/jwt');
-
-
-router.get('/user-token', (req, res) => {
-  const token = generateToken({
-    id: 1,
-    role: 'user'
-  });
-
-  res.json({ token });
-});
-
-router.get('/admin-token', (req, res) => {
-  const token = generateToken({
-    id: 2,
-    role: 'admin'
-  });
-
-  res.json({ token });
-});
-///////////////////////////////////////////////////
 
 
 // VARIANTS
