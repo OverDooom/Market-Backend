@@ -143,123 +143,122 @@ exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
   const client = await db.connect();
 
   try {
-    await client.query('BEGIN');
+await client.query('BEGIN');
 
+// 1. Validate addressId present in request body
+if (!addressId) {
+  const err = new Error('address_id is required');
+  err.status = 400;
+  throw err;
+}
 
-    if (!addrCheck.rows[0]) {
-      const err = new Error('Invalid address');
-      err.status = 400;
-      throw err;
-    }
-    // Load cart with row-level lock
-    const cart = await cartService.getCartForCheckout(userId, client);
+// 2. Validate address belongs to this user
+const addrCheck = await client.query(
+  `SELECT id FROM addresses WHERE id = $1 AND user_id = $2`,
+  [addressId, userId]
+);
 
-    if (cart.items.length === 0) {
-      const err = new Error('Cart is empty');
-      err.status = 400;
-      throw err;
-    }
+if (!addrCheck.rows[0]) {
+  const err = new Error('Invalid address');
+  err.status = 400;
+  throw err;
+}
 
-    // Validate stock
-    for (const item of cart.items) {
-      if (item.quantity > item.stock_quantity) {
-        const err = new Error(`Insufficient stock for ${item.product_name}`);
-        err.status = 400;
-        throw err;
-      }
-    }
+// 3. Load cart with row-level lock
+const cart = await cartService.getCartForCheckout(userId, client);
 
-    // Calculate pricing
-    const pricing = await pricingService.calculateCart({
-      client,
-      userId,
-      items: cart.items,
-      couponCodes,
-    });
+if (cart.items.length === 0) {
+  const err = new Error('Cart is empty');
+  err.status = 400;
+  throw err;
+}
 
-    // Validate address belongs to user
-    const addrCheck = await client.query(
-      `SELECT id FROM addresses WHERE id = $1 AND user_id = $2`,
-      [addressId, userId]
-    );
-    
-
-    if (!addressId) {
-    const err = new Error('address_id is required');
+// 4. Validate stock for each item
+for (const item of cart.items) {
+  if (item.quantity > item.stock_quantity) {
+    const err = new Error(`Insufficient stock for ${item.product_name}`);
     err.status = 400;
     throw err;
   }
+}
 
+// 5. Calculate pricing (with optional coupons)
+const pricing = await pricingService.calculateCart({
+  client,
+  userId,
+  items: cart.items,
+  couponCodes,
+});
 
-    // Create order
-    const orderResult = await client.query(
-      `INSERT INTO orders
-         (user_id, address_id, subtotal, discount_total, total_amount, status)
-       VALUES ($1, $2, $3, $4, $5, 'pending')
-       RETURNING *`,
-      [userId, addressId, pricing.subtotal, pricing.discount_total, pricing.total]
-    );
+// 6. Create order record
+const orderResult = await client.query(
+  `INSERT INTO orders
+     (user_id, address_id, subtotal, discount_total, total_amount, status)
+   VALUES ($1, $2, $3, $4, $5, 'pending')
+   RETURNING *`,
+  [userId, addressId, pricing.subtotal, pricing.discount_total, pricing.total]
+);
 
-    const order = orderResult.rows[0];
+const order = orderResult.rows[0];
 
-    // Create order items
-    for (const item of cart.items) {
-      await client.query(
-        `INSERT INTO order_items
-           (order_id, product_variant_id, quantity, price_at_purchase)
-         VALUES ($1, $2, $3, $4)`,
-        [order.id, item.variant_id, item.quantity, item.price]
-      );
-    }
+// 7. Create order items
+for (const item of cart.items) {
+  await client.query(
+    `INSERT INTO order_items
+       (order_id, product_variant_id, quantity, price_at_purchase)
+     VALUES ($1, $2, $3, $4)`,
+    [order.id, item.variant_id, item.quantity, item.price]
+  );
+}
 
-    // Deduct stock
-    for (const item of cart.items) {
-      await client.query(
-        `UPDATE product_variants
-         SET quantity = quantity - $1
-         WHERE id = $2`,
-        [item.quantity, item.variant_id]
-      );
-    }
+// 8. Deduct stock
+for (const item of cart.items) {
+  await client.query(
+    `UPDATE product_variants
+     SET quantity = quantity - $1
+     WHERE id = $2`,
+    [item.quantity, item.variant_id]
+  );
+}
 
-    // Record stock deductions in inventory ledger
-    await inventoryService.recordBulk({
-      client,
-      items:         cart.items,
-      multiplier:    -1,            // negative = stock removed
-      reason:        'checkout',
-      referenceId:   order.id,
-      referenceType: 'order',
-      createdBy:     userId,
-    });
+// 9. Record stock deductions in inventory ledger
+await inventoryService.recordBulk({
+  client,
+  items:         cart.items,
+  multiplier:    -1,
+  reason:        'checkout',
+  referenceId:   order.id,
+  referenceType: 'order',
+  createdBy:     userId,
+});
 
-    // Record promotion usage
-    await promotionService.recordPromotionUsage({
-      client,
-      promotions: pricing.discounts,
-      userId,
-      orderId: order.id,
-    });
+// 10. Record promotion usage
+await promotionService.recordPromotionUsage({
+  client,
+  promotions: pricing.discounts,
+  userId,
+  orderId: order.id,
+});
 
-    // Record initial status in history
-    await recordHistory({
-      client,
-      orderId:    order.id,
-      fromStatus: null,
-      toStatus:   'pending',
-      changedBy:  userId,
-      notes:      'Order placed',
-    });
+// 11. Record initial status in history
+await recordHistory({
+  client,
+  orderId:    order.id,
+  fromStatus: null,
+  toStatus:   'pending',
+  changedBy:  userId,
+  notes:      'Order placed',
+});
 
-    // Clear cart
-    await client.query(
-      `DELETE FROM cart_items WHERE cart_id = $1`,
-      [cart.id]
-    );
+// 12. Clear cart
+await client.query(
+  `DELETE FROM cart_items WHERE cart_id = $1`,
+  [cart.id]
+);
 
-    await client.query('COMMIT');
+await client.query('COMMIT');
 
-    return { order, pricing };
+return { order, pricing };
 
   } catch (err) {
     await client.query('ROLLBACK');

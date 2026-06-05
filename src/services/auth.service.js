@@ -47,6 +47,12 @@ exports.register = async ({ name, email, password }) => {
     throw err;
   }
 
+  if (password.length < 6) {
+    const err = new Error('Password must be at least 6 characters');
+    err.status = 400;
+    throw err;
+  }
+
   const existing = await db.query(
     `SELECT id FROM users WHERE email = $1`,
     [email]

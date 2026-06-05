@@ -15,12 +15,24 @@ exports.addItem = async (req, res, next) => {
   try {
     const { variant_id, quantity } = req.body;
 
+    if (!variant_id || isNaN(parseInt(variant_id))) {
+      const err = new Error('variant_id is required and must be a number');
+      err.status = 400;
+      throw err;
+    }
+
+    if (!quantity || parseInt(quantity) <= 0 || isNaN(parseInt(quantity))) {
+      const err = new Error('quantity is required and must be a positive number');
+      err.status = 400;
+      throw err;
+    }
+
     const cart = await cartService.getOrCreateCart(req.user.id);
 
     const item = await cartService.addItem(
       cart.id,
-      variant_id,
-      quantity
+      parseInt(variant_id),
+      parseInt(quantity)
     );
 
     res.status(201).json(item);
