@@ -134,18 +134,30 @@ exports.updateUser = async (id, data) => {
 };
 
 exports.deleteUser = async (id) => {
-  const result = await db.query(
-    `DELETE FROM users WHERE id = $1 RETURNING *`,
-    [id]
-  );
+  try {
+    const result = await db.query(
+      `DELETE FROM users WHERE id = $1 RETURNING *`,
+      [id]
+    );
 
-  if (!result.rows[0]) {
-    const err = new Error('User not found');
-    err.status = 404;
+    if (!result.rows[0]) {
+      const err = new Error('User not found');
+      err.status = 404;
+      throw err;
+    }
+
+    return result.rows[0];
+
+  } catch (err) {
+    if (err.code === '23503') {
+      const e = new Error(
+        'Cannot delete user: they have existing orders, reviews, or addresses. Deactivate them instead.'
+      );
+      e.status = 409;
+      throw e;
+    }
     throw err;
   }
-
-  return result.rows[0];
 };
 
 exports.getUserOrders = async (userId) => {

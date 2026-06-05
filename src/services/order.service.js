@@ -145,6 +145,12 @@ exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
   try {
     await client.query('BEGIN');
 
+
+    if (!addrCheck.rows[0]) {
+      const err = new Error('Invalid address');
+      err.status = 400;
+      throw err;
+    }
     // Load cart with row-level lock
     const cart = await cartService.getCartForCheckout(userId, client);
 
@@ -176,11 +182,14 @@ exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
       `SELECT id FROM addresses WHERE id = $1 AND user_id = $2`,
       [addressId, userId]
     );
-    if (!addrCheck.rows[0]) {
-      const err = new Error('Invalid address');
-      err.status = 400;
-      throw err;
-    }
+    
+
+    if (!addressId) {
+    const err = new Error('address_id is required');
+    err.status = 400;
+    throw err;
+  }
+
 
     // Create order
     const orderResult = await client.query(

@@ -2,11 +2,9 @@ const express = require('express');
 
 const router = express.Router();
 
-const notificationController =
-require('../controllers/notification.controller');
-
-const auth =
-require('../middleware/auth.middleware');
+const notificationController = require('../controllers/notification.controller');
+const auth = require('../middleware/auth.middleware');
+const role = require('../middleware/role.middleware');
 
 // GET MY NOTIFICATIONS
 router.get(
@@ -32,6 +30,7 @@ router.put(
 router.post(
   '/',
   auth,
+  role(['admin']),
   notificationController.createNotification
 );
 

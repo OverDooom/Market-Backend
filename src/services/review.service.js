@@ -102,16 +102,9 @@ exports.getProductReviews = async (productId) => {
 };
 
 // UPDATE REVIEW
-exports.updateReview = async (
-  reviewId,
-  userId,
-  data
-) => {
-
+exports.updateReview = async (reviewId, userId, data) => {
   const existing = await db.query(
-    `SELECT *
-     FROM reviews
-     WHERE id = $1`,
+    `SELECT * FROM reviews WHERE id = $1`,
     [reviewId]
   );
 
@@ -123,24 +116,25 @@ exports.updateReview = async (
     throw err;
   }
 
-  // ownership check
   if (review.user_id !== userId) {
     const err = new Error('Forbidden');
     err.status = 403;
     throw err;
   }
 
+  // Validate rating if provided
+  const newRating  = data.rating  ?? review.rating;
+  const newComment = data.comment ?? review.comment;
+
+  if (newRating < 1 || newRating > 5) {
+    const err = new Error('Rating must be between 1 and 5');
+    err.status = 400;
+    throw err;
+  }
+
   const result = await db.query(
-    `UPDATE reviews
-     SET rating = $1,
-         comment = $2
-     WHERE id = $3
-     RETURNING *`,
-    [
-      data.rating,
-      data.comment,
-      reviewId
-    ]
+    `UPDATE reviews SET rating = $1, comment = $2 WHERE id = $3 RETURNING *`,
+    [newRating, newComment, reviewId]
   );
 
   return result.rows[0];

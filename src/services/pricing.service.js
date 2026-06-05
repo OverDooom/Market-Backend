@@ -119,7 +119,10 @@ exports.calculateCart = async ({
   let finalPromotions;
 
   if (nonStackable.length > 0) {
-    finalPromotions = bestPromo ? [bestPromo] : [];
+    finalPromotions = [
+      ...(bestPromo ? [bestPromo] : []),
+      ...stackable
+    ];
   } else {
     finalPromotions = stackable;
   }

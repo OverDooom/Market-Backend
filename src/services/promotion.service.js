@@ -8,19 +8,14 @@ const db = require('../config/db');
 exports.getAutomaticPromotions = async (client = db) => {
 
   const result = await client.query(`
-    SELECT *
-    FROM promotions
-    WHERE is_active = true
-    AND is_automatic = true
-    AND (
-      start_date IS NULL
-      OR start_date <= NOW()
-    )
-    AND (
-      end_date IS NULL
-      OR end_date >= NOW()
-    )
-  `);
+  SELECT *
+  FROM promotions
+  WHERE is_active = true
+  AND is_automatic = true
+  AND deleted_at IS NULL
+  AND (start_date IS NULL OR start_date <= NOW())
+  AND (end_date IS NULL OR end_date >= NOW())
+`);
 
   return result.rows;
 };
@@ -49,6 +44,7 @@ exports.validateCoupon = async (code, client = db) => {
     WHERE LOWER(pc.code) = LOWER($1)
     AND pc.is_active = true
     AND p.is_active = true
+    AND p.deleted_at IS NULL
   `, [code]);
 
   const coupon = result.rows[0];
