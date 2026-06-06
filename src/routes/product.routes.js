@@ -6,6 +6,8 @@ const productController = require('../controllers/product.controller');
 const variantController = require('../controllers/variant.controller');
 const auth = require('../middleware/auth.middleware');
 const role = require('../middleware/role.middleware');
+const recordProductView  = require('../middleware/product_view.middleware');
+const optionalAuth = require('../middleware/optional_auth.middleware');
 
 
 
@@ -33,7 +35,7 @@ router.delete('/:productId/variants/:variantId', auth, role(['admin']), variantC
 router.get('/', productController.getAllProducts);
 
 // GET single product
-router.get('/:id', productController.getProductById);
+router.get('/:id',optionalAuth, recordProductView, productController.getProductById);
 
 // CREATE product (admin later)
 router.post('/', auth, role(['admin']), productController.createProduct);

@@ -2,6 +2,7 @@ const db                    = require('../config/db');
 const jwtUtils              = require('../utils/jwt');
 const { hashPassword, comparePassword } = require('../utils/hash');
 const { randomUUID }        = require('crypto');
+const userActivityService = require('./user_activity.service');
 
 
 // =========================================
@@ -119,6 +120,8 @@ exports.login = async ({ email, password }) => {
     user,
     familyId
   );
+
+  await userActivityService.record(user.id, 'login');
 
   return {
     access_token:  accessToken,
@@ -264,6 +267,13 @@ exports.logout = async (rawRefreshToken) => {
 
   const tokenHash = jwtUtils.hashToken(rawRefreshToken);
 
+   // Look up who owns this token so we can record activity
+  const tokenRes = await db.query(
+    `SELECT user_id FROM refresh_tokens WHERE token_hash = $1`,
+    [tokenHash]
+  );
+
+
   await db.query(
     `UPDATE refresh_tokens
      SET revoked_at = NOW()
@@ -271,6 +281,10 @@ exports.logout = async (rawRefreshToken) => {
        AND revoked_at IS NULL`,
     [tokenHash]
   );
+
+  if (tokenRes.rows[0]) {
+    await userActivityService.record(tokenRes.rows[0].user_id, 'logout');
+  }
 
   // We don't error if the token wasn't found or was already revoked —
   // the desired end state (token is invalid) is already true.

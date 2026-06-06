@@ -216,6 +216,29 @@ exports.createVariant = async (data) => {
     throw err;
   }
 
+  // NEW: validate all attribute values exist AND have a code (needed for SKU)
+  const avCheck = await db.query(
+    `SELECT id, value, code FROM attribute_values WHERE id = ANY($1::int[])`,
+    [attribute_value_ids]
+  );
+
+  if (avCheck.rows.length !== attribute_value_ids.length) {
+    const err = new Error('One or more attribute_value_ids do not exist');
+    err.status = 400;
+    throw err;
+  }
+
+  const missingCode = avCheck.rows.find(av => !av.code || av.code.trim() === '');
+  if (missingCode) {
+    const err = new Error(
+      `Attribute value "${missingCode.value}" is missing a code. ` +
+      `All attribute values must have a code for SKU generation.`
+    );
+    err.status = 400;
+    throw err;
+  }
+
+
   const product = await db.query(
     `SELECT id FROM products WHERE id = $1`,
     [product_id]

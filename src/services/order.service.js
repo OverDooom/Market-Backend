@@ -4,6 +4,8 @@ const pricingService   = require('./pricing.service');
 const promotionService = require('./promotion.service');
 const notificationService = require('./notification.service');
 const inventoryService = require('./inventory.service');
+const userActivityService = require('./user_activity.service');
+
 
 // =========================================
 // STATE MACHINE
@@ -258,6 +260,9 @@ await client.query(
 
 await client.query('COMMIT');
 
+// Record activity (after commit so it's always on a real order)
+    await userActivityService.record(userId, 'place_order');
+
 return { order, pricing };
 
   } catch (err) {
@@ -377,6 +382,8 @@ exports.cancelOrder = async (orderId, userId) => {
     });
 
     await client.query('COMMIT');
+
+     await userActivityService.record(userId, 'cancel_order');
 
     const updatedOrder = updated.rows[0];
 
