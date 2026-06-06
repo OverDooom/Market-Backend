@@ -3,7 +3,7 @@ const jwtUtils              = require('../utils/jwt');
 const { hashPassword, comparePassword } = require('../utils/hash');
 const { randomUUID }        = require('crypto');
 const userActivityService = require('./user_activity.service');
-
+const { requireStr,optionalStr, validatePhone } = require('../utils/sanitize');
 
 // =========================================
 // HELPERS
@@ -42,8 +42,18 @@ async function createTokenPair(user, familyId, client = db) {
 // =========================================
 
 exports.register = async ({ name, email, password }) => {
-  if (!email || !password) {
-    const err = new Error('Email and password are required');
+  // Validate and sanitize
+  const cleanEmail = requireStr(email, 'email', 254);
+  const cleanName  = optionalStr(name, 'name', 100);
+
+  if (!cleanEmail.includes('@')) {
+    const err = new Error('Invalid email address');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!password || typeof password !== 'string') {
+    const err = new Error('Password is required');
     err.status = 400;
     throw err;
   }
@@ -54,9 +64,16 @@ exports.register = async ({ name, email, password }) => {
     throw err;
   }
 
+  if (password.length > 72) {
+    // bcrypt silently truncates at 72 bytes — be explicit
+    const err = new Error('Password must be at most 72 characters');
+    err.status = 400;
+    throw err;
+  }
+
   const existing = await db.query(
     `SELECT id FROM users WHERE email = $1`,
-    [email]
+    [cleanEmail]
   );
 
   if (existing.rows.length > 0) {
@@ -71,7 +88,7 @@ exports.register = async ({ name, email, password }) => {
     `INSERT INTO users (name, email, password_hash, role_id)
      VALUES ($1, $2, $3, $4)
      RETURNING id, name, email`,
-    [name, email, hashed, 1]
+    [cleanName, cleanEmail, hashed, 1]
   );
 
   return result.rows[0];

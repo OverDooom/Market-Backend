@@ -1,5 +1,5 @@
 const db = require('../config/db');
-
+const { requireStr, optionalStr } = require('../utils/sanitize');
 
 exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
   const offset = (page - 1) * limit;
@@ -152,7 +152,10 @@ exports.getProductById = async (id) => {
  * @param {number} [adminId] - req.user.id from the controller
  */
 exports.createProduct = async (data, adminId = null) => {
-  const { name, description, brand, category_id } = data;
+  const name        = requireStr(data.name,        'name',        200);
+  const description = optionalStr(data.description, 'description', 2000);
+  const brand       = optionalStr(data.brand,       'brand',       100);
+  const { category_id } = data;
 
   const categoryCheck = await db.query(
     `SELECT id FROM categories WHERE id = $1`,
@@ -181,7 +184,27 @@ exports.createProduct = async (data, adminId = null) => {
  * @param {number} [adminId] - req.user.id from the controller
  */
 exports.updateProduct = async (id, data, adminId = null) => {
-  const { name, description, brand, category_id } = data;
+  const name        = data.name        !== undefined
+    ? requireStr(data.name,        'name',        200)
+    : undefined;
+  const description = data.description !== undefined
+    ? optionalStr(data.description, 'description', 2000)
+    : undefined;
+  const brand       = data.brand       !== undefined
+    ? optionalStr(data.brand,       'brand',       100)
+    : undefined;
+
+  // Fetch existing so we can keep unchanged fields
+  const existing = await db.query(
+    `SELECT * FROM products WHERE id = $1 AND deleted_at IS NULL`,
+    [id]
+  );
+
+  if (!existing.rows[0]) {
+    return undefined;
+  }
+
+  const p = existing.rows[0];
 
   const result = await db.query(`
     UPDATE products
@@ -194,9 +217,16 @@ exports.updateProduct = async (id, data, adminId = null) => {
     WHERE id = $6
       AND deleted_at IS NULL
     RETURNING *
-  `, [name, description, brand, category_id, adminId, id]);
+  `, [
+    name        ?? p.name,
+    description ?? p.description,
+    brand       ?? p.brand,
+    data.category_id ?? p.category_id,
+    adminId,
+    id
+  ]);
 
-  return result.rows[0]; // undefined if not found or soft-deleted
+  return result.rows[0];
 };
 
 

@@ -1,5 +1,5 @@
 const db = require('../config/db');
-
+const { optionalStr } = require('../utils/sanitize');
 // CREATE REVIEW
 exports.createReview = async (
   userId,
@@ -7,14 +7,12 @@ exports.createReview = async (
   data
 ) => {
 
-  const { rating, comment } = data;
+  const rating  = parseInt(data.rating);
+  const comment = optionalStr(data.comment, 'comment', 1000);
 
   // validate rating
-  if (rating < 1 || rating > 5) {
-    const err = new Error(
-      'Rating must be between 1 and 5'
-    );
-
+  if (!data.rating || isNaN(rating) || rating < 1 || rating > 5) {
+    const err = new Error('Rating must be between 1 and 5');
     err.status = 400;
     throw err;
   }
@@ -123,10 +121,12 @@ exports.updateReview = async (reviewId, userId, data) => {
   }
 
   // Validate rating if provided
-  const newRating  = data.rating  ?? review.rating;
-  const newComment = data.comment ?? review.comment;
+  const newRating  = data.rating  !== undefined ? parseInt(data.rating)  : review.rating;
+  const newComment = data.comment !== undefined
+    ? optionalStr(data.comment, 'comment', 1000)
+    : review.comment;
 
-  if (newRating < 1 || newRating > 5) {
+  if (isNaN(newRating) || newRating < 1 || newRating > 5) {
     const err = new Error('Rating must be between 1 and 5');
     err.status = 400;
     throw err;

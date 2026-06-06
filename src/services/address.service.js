@@ -1,6 +1,6 @@
 const db = require('../config/db');
+const { requireStr, optionalStr } = require('../utils/sanitize');
 
-// GET all addresses for a user
 exports.getAddresses = async (userId) => {
   const result = await db.query(
     `SELECT * FROM addresses WHERE user_id = $1 ORDER BY id`,
@@ -9,7 +9,6 @@ exports.getAddresses = async (userId) => {
   return result.rows;
 };
 
-// GET single address
 exports.getAddressById = async (id, userId) => {
   const result = await db.query(
     `SELECT * FROM addresses WHERE id = $1 AND user_id = $2`,
@@ -25,27 +24,22 @@ exports.getAddressById = async (id, userId) => {
   return result.rows[0];
 };
 
-// CREATE address
 exports.createAddress = async (userId, data) => {
-  const { city, street, building, area } = data;
-
-  if (!city || !street) {
-    const err = new Error("city and street are required");
-    err.status = 400;
-    throw err;
-  }
+  const city     = requireStr(data.city,     'city',     100);
+  const street   = requireStr(data.street,   'street',   200);
+  const building = optionalStr(data.building, 'building', 100);
+  const area     = optionalStr(data.area,     'area',     100);
 
   const result = await db.query(
     `INSERT INTO addresses (user_id, city, street, building, "Area")
      VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [userId, city, street, building || null, area || null]
+    [userId, city, street, building, area]
   );
 
   return result.rows[0];
 };
 
-// UPDATE address
 exports.updateAddress = async (id, userId, data) => {
   const existing = await db.query(
     `SELECT * FROM addresses WHERE id = $1 AND user_id = $2`,
@@ -60,25 +54,34 @@ exports.updateAddress = async (id, userId, data) => {
 
   const addr = existing.rows[0];
 
+  // Only validate fields that were actually sent
+  const city     = data.city     !== undefined
+    ? requireStr(data.city,      'city',     100)
+    : addr.city;
+
+  const street   = data.street   !== undefined
+    ? requireStr(data.street,    'street',   200)
+    : addr.street;
+
+  const building = data.building !== undefined
+    ? optionalStr(data.building, 'building', 100)
+    : addr.building;
+
+  const area     = data.area     !== undefined
+    ? optionalStr(data.area,     'area',     100)
+    : addr.Area;
+
   const result = await db.query(
     `UPDATE addresses
      SET city = $1, street = $2, building = $3, "Area" = $4
      WHERE id = $5 AND user_id = $6
      RETURNING *`,
-    [
-      data.city     ?? addr.city,
-      data.street   ?? addr.street,
-      data.building ?? addr.building,
-      data.area     ?? addr.Area,
-      id,
-      userId
-    ]
+    [city, street, building, area, id, userId]
   );
 
   return result.rows[0];
 };
 
-// DELETE address
 exports.deleteAddress = async (id, userId) => {
   const result = await db.query(
     `DELETE FROM addresses WHERE id = $1 AND user_id = $2 RETURNING *`,
