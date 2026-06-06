@@ -130,9 +130,9 @@ async (
     cartResult.rows[0];
 
   if (!cart) {
-    throw new Error(
-      'Cart not found'
-    );
+    const err= new Error('Cart not found');
+    err.status = 400;
+    throw err;
   }
 
   const items =
