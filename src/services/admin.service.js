@@ -1,8 +1,8 @@
 const db = require('../config/db');
 
-// =========================================
-// USERS
-// =========================================
+
+
+
 
 exports.getAllUsers = async ({ search, role, page = 1, limit = 20 } = {}) => {
   const values     = [];
@@ -85,7 +85,7 @@ exports.updateUser = async (id, data) => {
 
   const user = existing.rows[0];
 
-  // Resolve new role_id if a role name was passed
+  
   let newRoleId = user.role_id;
   if (data.role && data.role !== user.role_name) {
     const roleRes = await db.query(
@@ -100,7 +100,7 @@ exports.updateUser = async (id, data) => {
     newRoleId = roleRes.rows[0].id;
   }
 
-  // Guard: email uniqueness if changing email
+  
   if (data.email && data.email !== user.email) {
     const dup = await db.query(
       `SELECT id FROM users WHERE email = $1 AND id != $2`,
@@ -207,9 +207,9 @@ exports.getUserReviews = async (userId) => {
   return result.rows;
 };
 
-// =========================================
-// ORDERS
-// =========================================
+
+
+
 
 exports.getAllOrders = async ({
   status,
@@ -295,9 +295,9 @@ exports.getOrderByIdAdmin = async (orderId) => {
   return order;
 };
 
-// =========================================
-// REVIEWS
-// =========================================
+
+
+
 
 exports.getAllReviews = async ({
   productId,
@@ -380,11 +380,11 @@ exports.getAllNotifications = async ({ page = 1, limit = 30 } = {}) => {
   return result.rows;
 };
 
-/**
- * Send a notification to:
- *   - specific userIds array, OR
- *   - all users if broadcast_all = true
- */
+
+
+
+
+
 exports.sendNotification = async ({
   title,
   message,
@@ -414,7 +414,7 @@ exports.sendNotification = async ({
     throw err;
   }
 
-  // Reuse the existing notification service so Socket.io fires too
+  
   const notificationService = require('./notification.service');
 
   return notificationService.createNotification({
@@ -427,7 +427,7 @@ exports.sendNotification = async ({
 };
 
 exports.deleteNotification = async (notificationId) => {
-  // Cascade handles user_notifications rows via FK
+  
   const result = await db.query(
     `DELETE FROM notifications WHERE id = $1 RETURNING *`,
     [notificationId]
@@ -442,13 +442,13 @@ exports.deleteNotification = async (notificationId) => {
   return result.rows[0];
 };
 
-// =========================================
-// WISHLIST
-// =========================================
 
-/**
- * Most-wishlisted products — useful for merchandising decisions.
- */
+
+
+
+
+
+
 exports.getWishlistStats = async ({ limit = 20 } = {}) => {
   const result = await db.query(
     `SELECT
@@ -469,9 +469,9 @@ exports.getWishlistStats = async ({ limit = 20 } = {}) => {
   return result.rows;
 };
 
-/**
- * View any user's wishlist.
- */
+
+
+
 exports.getUserWishlist = async (userId) => {
   const user = await db.query(`SELECT id FROM users WHERE id = $1`, [userId]);
   if (!user.rows[0]) {
@@ -504,9 +504,9 @@ exports.getUserWishlist = async (userId) => {
   return result.rows;
 };
 
-// =========================================
-// DASHBOARD STATS
-// =========================================
+
+
+
 
 exports.getDashboardStats = async () => {
   const [
@@ -519,27 +519,27 @@ exports.getDashboardStats = async () => {
     lowStockRes,
   ] = await Promise.all([
 
-    // Total users
+    
     db.query(`SELECT COUNT(*)::INTEGER AS total FROM users`),
 
-    // Total orders
+    
     db.query(`SELECT COUNT(*)::INTEGER AS total FROM orders`),
 
-    // Total revenue (delivered orders only)
+    
     db.query(
       `SELECT COALESCE(SUM(total_amount), 0) AS total
        FROM orders
        WHERE status = 'delivered'`
     ),
 
-    // Orders grouped by status
+    
     db.query(
       `SELECT status, COUNT(*)::INTEGER AS count
        FROM orders
        GROUP BY status`
     ),
 
-    // Top 5 products by units sold
+    
     db.query(
       `SELECT
           p.id,
@@ -556,7 +556,7 @@ exports.getDashboardStats = async () => {
        LIMIT 5`
     ),
 
-    // 5 most recent orders
+    
     db.query(
       `SELECT
           o.id,
@@ -570,7 +570,7 @@ exports.getDashboardStats = async () => {
        LIMIT 5`
     ),
 
-    // Variants with stock <= 5 (low stock alert)
+    
     db.query(
       `SELECT
           pv.id,

@@ -6,9 +6,9 @@ const db = require('../src/config/db');
 let seededProductId;
 
 beforeAll(async () => {
-  // Ensure category 1 exists
+  
   await db.query(`INSERT INTO categories (id, name) VALUES (1, 'Test Category') ON CONFLICT DO NOTHING`);
-  // Insert a fresh product for tests that need id-based access
+  
   const res = await db.query(
     `INSERT INTO products (name, description, brand, category_id) VALUES ('Test Product', 'desc', 'Brand', 1) RETURNING id`
   );

@@ -54,7 +54,7 @@ exports.updateAddress = async (id, userId, data) => {
 
   const addr = existing.rows[0];
 
-  // Only validate fields that were actually sent
+  
   const city     = data.city     !== undefined
     ? requireStr(data.city,      'city',     100)
     : addr.city;

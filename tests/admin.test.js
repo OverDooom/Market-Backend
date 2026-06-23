@@ -5,9 +5,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { adminToken, userToken } = require('./helpers/auth');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `adm_${suffix}_${Date.now()}@mail.com`;
@@ -30,9 +30,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// AUTH GUARD — every admin route must reject non-admin
-// =========================================
+
+
+
 
 describe('Admin route guards', () => {
 
@@ -61,9 +61,9 @@ describe('Admin route guards', () => {
 
 });
 
-// =========================================
-// DASHBOARD
-// =========================================
+
+
+
 
 describe('GET /api/admin/dashboard', () => {
 
@@ -83,9 +83,9 @@ describe('GET /api/admin/dashboard', () => {
 
 });
 
-// =========================================
-// USERS
-// =========================================
+
+
+
 
 describe('GET /api/admin/users', () => {
 
@@ -212,7 +212,7 @@ describe('DELETE /api/admin/users/:id', () => {
 
   test('admin can delete a user with no relations', async () => {
     const user = await createUser('del');
-    // NOT added to createdUserIds — the test deletes it
+    
 
     const res = await request(app)
       .delete(`/api/admin/users/${user.id}`)
@@ -279,9 +279,9 @@ describe('GET /api/admin/users/:id/wishlist', () => {
 
 });
 
-// =========================================
-// ORDERS
-// =========================================
+
+
+
 
 describe('GET /api/admin/orders', () => {
 
@@ -325,9 +325,9 @@ describe('GET /api/admin/orders/:id', () => {
 
 });
 
-// =========================================
-// REVIEWS
-// =========================================
+
+
+
 
 describe('GET /api/admin/reviews', () => {
 
@@ -370,9 +370,9 @@ describe('DELETE /api/admin/reviews/:id', () => {
 
 });
 
-// =========================================
-// NOTIFICATIONS
-// =========================================
+
+
+
 
 describe('GET /api/admin/notifications', () => {
 
@@ -459,9 +459,9 @@ describe('DELETE /api/admin/notifications/:id', () => {
 
 });
 
-// =========================================
-// WISHLIST STATS
-// =========================================
+
+
+
 
 describe('GET /api/admin/wishlist/stats', () => {
 
@@ -485,9 +485,9 @@ describe('GET /api/admin/wishlist/stats', () => {
 
 });
 
-// =========================================
-// PROMOTIONS
-// =========================================
+
+
+
 
 describe('Admin Promotions', () => {
 
@@ -600,7 +600,7 @@ describe('Admin Promotions', () => {
     expect(res.body).toHaveProperty('usage');
   });
 
-  // --- Coupons ---
+  
 
   let couponId;
 

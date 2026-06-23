@@ -1,9 +1,9 @@
-// src/middleware/role.middleware.js
+
 
 module.exports = (allowedRoles = []) => {
   return (req, res, next) => {
     try {
-      // auth middleware must run before this
+      
       if (!req.user) {
         return res.status(401).json({
           success: false,

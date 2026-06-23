@@ -30,7 +30,6 @@ const analyticsRoutes = require('./routes/analytics.routes');
 
 app.use(express.json({ limit: '10kb' }));
 
-app.use(express.json());
 app.use('/api/products', ProductRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use('/api/notifications', notificationRoutes);

@@ -1,4 +1,4 @@
-// src/socket/socket.js — full file replacement
+
 
 const jwt = require('jsonwebtoken');
 
@@ -14,13 +14,13 @@ exports.init = (server) => {
   io.on('connection', (socket) => {
     console.log('User connected');
 
-    // Client must emit: socket.emit('join', '<access_token>')
+    
     socket.on('join', (token) => {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         socket.join(`user_${decoded.id}`);
       } catch (err) {
-        // Invalid or expired token — disconnect the socket
+        
         socket.emit('error', { message: 'Authentication failed' });
         socket.disconnect(true);
       }

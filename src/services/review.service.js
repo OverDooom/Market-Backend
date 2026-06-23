@@ -1,6 +1,6 @@
 const db = require('../config/db');
 const { optionalStr } = require('../utils/sanitize');
-// CREATE REVIEW
+
 exports.createReview = async (
   userId,
   productId,
@@ -10,14 +10,14 @@ exports.createReview = async (
   const rating  = parseInt(data.rating);
   const comment = optionalStr(data.comment, 'comment', 1000);
 
-  // validate rating
+  
   if (!data.rating || isNaN(rating) || rating < 1 || rating > 5) {
     const err = new Error('Rating must be between 1 and 5');
     err.status = 400;
     throw err;
   }
 
-  // check product exists
+  
   const product = await db.query(
     `SELECT id
      FROM products
@@ -31,7 +31,7 @@ exports.createReview = async (
     throw err;
   }
 
-  // prevent duplicate review
+  
   const existing = await db.query(
     `SELECT id
      FROM reviews
@@ -70,7 +70,7 @@ exports.createReview = async (
   return result.rows[0];
 };
 
-// GET PRODUCT REVIEWS
+
 exports.getProductReviews = async (productId) => {
 
   const result = await db.query(
@@ -99,7 +99,7 @@ exports.getProductReviews = async (productId) => {
   return result.rows;
 };
 
-// UPDATE REVIEW
+
 exports.updateReview = async (reviewId, userId, data) => {
   const existing = await db.query(
     `SELECT * FROM reviews WHERE id = $1`,
@@ -120,7 +120,7 @@ exports.updateReview = async (reviewId, userId, data) => {
     throw err;
   }
 
-  // Validate rating if provided
+  
   const newRating  = data.rating  !== undefined ? parseInt(data.rating)  : review.rating;
   const newComment = data.comment !== undefined
     ? optionalStr(data.comment, 'comment', 1000)
@@ -140,7 +140,7 @@ exports.updateReview = async (reviewId, userId, data) => {
   return result.rows[0];
 };
 
-// DELETE REVIEW
+
 exports.deleteReview = async (
   reviewId,
   userId

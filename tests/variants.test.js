@@ -446,7 +446,7 @@ test('returns 404 when deleting unknown variant', async () => {
 
 test('deletes variant', async () => {
 
-  // Create a fresh variant so we're not hitting one with FK references
+  
   const created = await request(app)
     .post('/api/products/1/variants')
     .set('Authorization', `Bearer ${adminToken()}`)

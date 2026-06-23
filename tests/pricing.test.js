@@ -5,9 +5,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { adminToken } = require('./helpers/auth');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `pricing_${suffix}_${Date.now()}@mail.com`;
@@ -51,9 +51,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// CART PRICING PREVIEW  POST /api/pricing/cart
-// =========================================
+
+
+
 
 describe('POST /api/pricing/cart', () => {
 
@@ -87,7 +87,7 @@ describe('POST /api/pricing/cart', () => {
     const user = await createUser('subtotal');
     createdUserIds.push(user.id);
 
-    // Add item to cart (price = 50, qty = 2 → subtotal = 100)
+    
     await request(app)
       .post('/api/cart/items')
       .set('Authorization', `Bearer ${user.token}`)
@@ -135,7 +135,7 @@ describe('POST /api/pricing/cart', () => {
   });
 
   test('applies valid coupon and returns discount info', async () => {
-    // Create a coupon-based promotion first
+    
     const promoRes = await request(app)
       .post('/api/admin/promotions')
       .set('Authorization', `Bearer ${adminToken()}`)
@@ -170,14 +170,14 @@ describe('POST /api/pricing/cart', () => {
     expect(res.body.discounts.length).toBeGreaterThan(0);
     expect(Number(res.body.total)).toBeLessThan(Number(res.body.subtotal));
 
-    // cleanup promotion (no usage, safe to delete)
+    
     await request(app)
       .delete(`/api/admin/promotions/${promoId}`)
       .set('Authorization', `Bearer ${adminToken()}`);
   });
 
   test('total is never negative', async () => {
-    // big fixed discount on small cart
+    
     const promoRes = await request(app)
       .post('/api/admin/promotions')
       .set('Authorization', `Bearer ${adminToken()}`)

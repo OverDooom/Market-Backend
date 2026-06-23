@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-// CREATE NOTIFICATION
+
 exports.createNotification = async ({
   title,
   message,
@@ -9,7 +9,7 @@ exports.createNotification = async ({
   userIds = []
 }) => {
 
-  // 1. create notification
+  
   const notificationRes = await db.query(
     `INSERT INTO notifications
      (
@@ -31,7 +31,7 @@ exports.createNotification = async ({
   const notification =
     notificationRes.rows[0];
 
-  // 2. attach users
+  
   for (const userId of userIds) {
 
     await db.query(
@@ -61,13 +61,13 @@ exports.createNotification = async ({
           });
       }
     } catch (_) {
-      // socket not initialized (e.g. test environment)
+      
     }
 
   return notification;
 };
 
-// GET USER NOTIFICATIONS
+
 exports.getUserNotifications =
 async (userId) => {
 
@@ -97,7 +97,7 @@ async (userId) => {
   return result.rows;
 };
 
-// MARK AS READ
+
 exports.markAsRead =
 async (userNotificationId, userId) => {
 
@@ -122,7 +122,7 @@ async (userNotificationId, userId) => {
   return result.rows[0];
 };
 
-// MARK ALL AS READ
+
 exports.markAllAsRead =
 async (userId) => {
 

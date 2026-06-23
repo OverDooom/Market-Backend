@@ -1,6 +1,6 @@
 const orderService = require('../services/order.service');
 
-// CHECKOUT
+
 exports.checkout = async (req, res, next) => {
   try {
     const { address_id } = req.body;
@@ -22,7 +22,7 @@ exports.checkout = async (req, res, next) => {
   }
 };
 
-// GET MY ORDERS
+
 exports.getMyOrders = async (req, res, next) => {
   try {
     const orders = await orderService.getMyOrders(req.user.id);
@@ -32,7 +32,7 @@ exports.getMyOrders = async (req, res, next) => {
   }
 };
 
-// GET SINGLE ORDER
+
 exports.getOrderById = async (req, res, next) => {
   try {
     const order = await orderService.getOrderById(
@@ -45,7 +45,7 @@ exports.getOrderById = async (req, res, next) => {
   }
 };
 
-// USER — CANCEL OWN PENDING ORDER
+
 exports.cancelOrder = async (req, res, next) => {
   try {
     const order = await orderService.cancelOrder(
@@ -58,7 +58,7 @@ exports.cancelOrder = async (req, res, next) => {
   }
 };
 
-// GET STATUS HISTORY (owner or admin)
+
 exports.getOrderHistory = async (req, res, next) => {
   try {
     const isAdmin = req.user.role === 'admin';
@@ -75,7 +75,7 @@ exports.getOrderHistory = async (req, res, next) => {
   }
 };
 
-// ADMIN — UPDATE STATUS
+
 exports.updateOrderStatus = async (req, res, next) => {
   try {
     const { status, notes } = req.body;
@@ -87,7 +87,7 @@ exports.updateOrderStatus = async (req, res, next) => {
     const order = await orderService.updateOrderStatus(
       req.params.id,
       status,
-      req.user.id,     // adminId — recorded in history
+      req.user.id,     
       notes || null
     );
 

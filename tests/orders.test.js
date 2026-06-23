@@ -5,9 +5,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { adminToken } = require('./helpers/auth');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `ord_${suffix}_${Date.now()}@mail.com`;
@@ -21,28 +21,28 @@ async function createUser(suffix) {
   return { id, token };
 }
 
-/**
- * Seeds: a user with an address, a cart with one item, and the variant.
- * Returns everything needed to call POST /api/orders/checkout.
- */
+
+
+
+
 async function setupCheckout(suffix) {
   const user = await createUser(suffix);
 
-  // Address
+  
   const addrRes = await db.query(
     `INSERT INTO addresses (user_id, city, street) VALUES ($1,'TestCity','TestSt') RETURNING id`,
     [user.id]
   );
   const addressId = addrRes.rows[0].id;
 
-  // Cart
+  
   const cartRes = await db.query(
     `INSERT INTO carts (user_id) VALUES ($1) RETURNING id`,
     [user.id]
   );
   const cartId = cartRes.rows[0].id;
 
-  // Add item to cart
+  
   await db.query(
     `INSERT INTO cart_items (cart_id, product_variant_id, quantity) VALUES ($1,$2,1)`,
     [cartId, sharedVariantId]
@@ -57,7 +57,7 @@ let sharedVariantId;
 beforeAll(async () => {
   await db.query(`INSERT INTO categories (id, name) VALUES (1,'Test Category') ON CONFLICT DO NOTHING`);
 
-  // Create a product + variant that all checkout tests will share
+  
   const prod = await db.query(
     `INSERT INTO products (name, category_id) VALUES ('Order Test Product', 1) RETURNING id`
   );
@@ -72,7 +72,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up order-related data for every user we created
+  
   if (createdUserIds.length > 0) {
     const orderRows = await db.query(
       `SELECT id FROM orders WHERE user_id = ANY($1::int[])`, [createdUserIds]
@@ -98,9 +98,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// CHECKOUT
-// =========================================
+
+
+
 
 describe('POST /api/orders/checkout', () => {
 
@@ -216,9 +216,9 @@ describe('POST /api/orders/checkout', () => {
 
 });
 
-// =========================================
-// GET MY ORDERS
-// =========================================
+
+
+
 
 describe('GET /api/orders', () => {
 
@@ -259,9 +259,9 @@ describe('GET /api/orders', () => {
 
 });
 
-// =========================================
-// GET SINGLE ORDER
-// =========================================
+
+
+
 
 describe('GET /api/orders/:id', () => {
 
@@ -323,9 +323,9 @@ describe('GET /api/orders/:id', () => {
 
 });
 
-// =========================================
-// CANCEL ORDER
-// =========================================
+
+
+
 
 describe('POST /api/orders/:id/cancel', () => {
 
@@ -407,9 +407,9 @@ describe('POST /api/orders/:id/cancel', () => {
 
 });
 
-// =========================================
-// GET ORDER STATUS HISTORY
-// =========================================
+
+
+
 
 describe('GET /api/orders/:id/history', () => {
 
@@ -459,9 +459,9 @@ describe('GET /api/orders/:id/history', () => {
 
 });
 
-// =========================================
-// UPDATE ORDER STATUS (admin)
-// =========================================
+
+
+
 
 describe('PUT /api/orders/:id/status', () => {
 
@@ -528,7 +528,7 @@ describe('PUT /api/orders/:id/status', () => {
     const res = await request(app)
       .put(`/api/orders/${orderId}/status`)
       .set('Authorization', `Bearer ${adminToken()}`)
-      .send({ status: 'delivered' }); // pending → delivered is not allowed
+      .send({ status: 'delivered' }); 
 
     expect(res.status).toBe(400);
   });

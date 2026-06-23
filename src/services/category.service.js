@@ -2,7 +2,7 @@ const db = require("../config/db");
 const { requireStr } = require('../utils/sanitize');
 
 
-// GET ALL categories
+
 exports.getAllCategories =
 async () => {
   const query = `
@@ -27,7 +27,7 @@ async () => {
 
 
 
-// GET category BY ID
+
 exports.getCategoryById =
 async (id) => {
   const result =
@@ -46,7 +46,7 @@ async (id) => {
 };
 
 
-// CREATE category
+
 
 exports.createCategory = async (data) => {
   const name = requireStr(data.name, 'name', 100);
@@ -71,7 +71,7 @@ exports.createCategory = async (data) => {
 };
 
 
-// UPDATE category
+
 exports.updateCategory = async (id, data) => {
   const existing = await db.query(
     "SELECT id FROM categories WHERE id = $1",
@@ -101,10 +101,10 @@ exports.updateCategory = async (id, data) => {
 };
 
 
-// DELETE category BY ID
+
 exports.deleteCategory = async (id) => {
 
-  // Check children
+  
   const children = await db.query(
       `SELECT id
        FROM categories

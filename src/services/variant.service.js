@@ -3,7 +3,7 @@ const { generateSKU } = require('../utils/sku');
 const inventoryService = require('./inventory.service');
 
 
-// GET ALL variants (global)
+
 exports.getAllVariants = async () => {
   const result = await db.query(`
     SELECT 
@@ -50,7 +50,7 @@ exports.getAllVariants = async () => {
 };
 
 
-// GET variant by ID
+
 exports.getVariantById = async (id) => {
   const result = await db.query(`
     SELECT 
@@ -103,7 +103,7 @@ exports.getVariantById = async (id) => {
 };
 
 
-// GET variants by product
+
 exports.getVariantsByProduct = async (productId) => {
   const result = await db.query(`
     SELECT 
@@ -138,18 +138,18 @@ exports.getVariantsByProduct = async (productId) => {
 };
 
 
-/**
- * Update a variant's price, barcode, and quantity.
- * If quantity changes, the delta is recorded in inventory_transactions.
- *
- * @param {number} id
- * @param {object} data      - { barcode, price, quantity }
- * @param {number} [adminId] - req.user.id, recorded in inventory ledger
- */
+
+
+
+
+
+
+
+
 exports.updateVariant = async (id, data, adminId = null) => {
   const { barcode, price, quantity } = data;
 
-  // Fetch existing variant so we can calculate the delta
+  
   const existing = await db.query(
     `SELECT * FROM product_variants WHERE id = $1`,
     [id]
@@ -184,7 +184,7 @@ exports.updateVariant = async (id, data, adminId = null) => {
     throw err;
   }
 
-  // Record stock movement only when quantity actually changed
+  
   const delta = (quantity ?? oldQuantity) - oldQuantity;
 
   if (delta !== 0) {
@@ -216,7 +216,7 @@ exports.createVariant = async (data) => {
     throw err;
   }
 
-  // NEW: validate all attribute values exist AND have a code (needed for SKU)
+  
   const avCheck = await db.query(
     `SELECT id, value, code FROM attribute_values WHERE id = ANY($1::int[])`,
     [attribute_value_ids]
@@ -250,7 +250,7 @@ exports.createVariant = async (data) => {
     throw err;
   }
 
-  // Check for duplicate variant (same attribute combination)
+  
   const sorted = [...attribute_value_ids].sort((a, b) => a - b);
 
   const existing = await db.query(`
@@ -268,7 +268,7 @@ exports.createVariant = async (data) => {
     throw err;
   }
 
-  // Create variant without SKU first
+  
   const variantRes = await db.query(`
     INSERT INTO product_variants (product_id, barcode, price, quantity)
     VALUES ($1, $2, $3, $4)
@@ -277,7 +277,7 @@ exports.createVariant = async (data) => {
 
   const variant = variantRes.rows[0];
 
-  // Insert attribute links
+  
   for (const attrValueId of attribute_value_ids) {
     await db.query(
       `INSERT INTO variant_attributes (variant_id, attribute_value_id) VALUES ($1, $2)`,
@@ -285,7 +285,7 @@ exports.createVariant = async (data) => {
     );
   }
 
-  // Generate and attach SKU
+  
   const sku = await generateSKU({ variantId: variant.id, productId: product_id });
 
   const updated = await db.query(`

@@ -9,7 +9,7 @@ const pricingController =
 require('../controllers/pricing.controller');
 
 
-// PREVIEW CART PRICING
+
 router.post(
   '/cart',
   auth,

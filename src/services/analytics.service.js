@@ -1,8 +1,8 @@
 const db = require('../config/db');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 const VALID_PERIODS = ['daily', 'weekly', 'monthly', 'yearly'];
 
@@ -26,9 +26,9 @@ function assertValidPeriod(period) {
   }
 }
 
-// =========================================
-// OVERVIEW
-// =========================================
+
+
+
 
 exports.getOverview = async () => {
   const [
@@ -38,7 +38,7 @@ exports.getOverview = async () => {
     stockRes,
   ] = await Promise.all([
 
-    // Core counts + order status breakdown in one query
+    
     db.query(`
       SELECT
         (SELECT COUNT(*)::INTEGER FROM users)                        AS total_users,
@@ -53,14 +53,14 @@ exports.getOverview = async () => {
         (SELECT COUNT(*)::INTEGER FROM orders WHERE status = 'cancelled') AS cancelled_orders
     `),
 
-    // All-time revenue from non-cancelled orders
+    
     db.query(`
       SELECT COALESCE(SUM(total_amount), 0) AS total_gross_revenue
       FROM orders
       WHERE status != 'cancelled'
     `),
 
-    // Today's stats
+    
     db.query(`
       SELECT
         COUNT(*)::INTEGER                        AS today_orders,
@@ -70,7 +70,7 @@ exports.getOverview = async () => {
         AND status != 'cancelled'
     `),
 
-    // Stock levels
+    
     db.query(`
       SELECT
         COUNT(*) FILTER (WHERE quantity > 0 AND quantity <= 5)::INTEGER AS low_stock_count,
@@ -113,9 +113,9 @@ exports.getOverview = async () => {
   };
 };
 
-// =========================================
-// REVENUE
-// =========================================
+
+
+
 
 exports.getRevenue = async ({ period = 'monthly' } = {}) => {
   assertValidPeriod(period);
@@ -149,9 +149,9 @@ exports.getRevenue = async ({ period = 'monthly' } = {}) => {
   };
 };
 
-// =========================================
-// ORDERS
-// =========================================
+
+
+
 
 exports.getOrderAnalytics = async ({ period = 'monthly' } = {}) => {
   assertValidPeriod(period);
@@ -159,7 +159,7 @@ exports.getOrderAnalytics = async ({ period = 'monthly' } = {}) => {
 
   const [statusRes, volumeRes, summaryRes] = await Promise.all([
 
-    // Orders by status
+    
     db.query(`
       SELECT
         status,
@@ -170,7 +170,7 @@ exports.getOrderAnalytics = async ({ period = 'monthly' } = {}) => {
       ORDER BY count DESC
     `),
 
-    // Volume over time
+    
     db.query(`
       SELECT
         DATE_TRUNC($1, created_at)  AS period,
@@ -181,7 +181,7 @@ exports.getOrderAnalytics = async ({ period = 'monthly' } = {}) => {
       LIMIT 24
     `, [trunc]),
 
-    // Summary stats
+    
     db.query(`
       SELECT
         ROUND(AVG(total_amount), 2)       AS avg_order_value,
@@ -213,9 +213,9 @@ exports.getOrderAnalytics = async ({ period = 'monthly' } = {}) => {
   };
 };
 
-// =========================================
-// TOP PRODUCTS
-// =========================================
+
+
+
 
 exports.getTopProducts = async ({ limit = 10 } = {}) => {
   const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
@@ -257,9 +257,9 @@ exports.getTopProducts = async ({ limit = 10 } = {}) => {
   }));
 };
 
-// =========================================
-// TOP CATEGORIES
-// =========================================
+
+
+
 
 exports.getTopCategories = async ({ limit = 10 } = {}) => {
   const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
@@ -297,16 +297,16 @@ exports.getTopCategories = async ({ limit = 10 } = {}) => {
   }));
 };
 
-// =========================================
-// USERS
-// =========================================
+
+
+
 
 exports.getUserAnalytics = async ({ limit = 10 } = {}) => {
   const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
 
   const [summaryRes, growthRes, topCustomersRes, activityRes] = await Promise.all([
 
-    // Summary counts
+    
     db.query(`
       SELECT
         COUNT(*)::INTEGER AS total_users,
@@ -319,7 +319,7 @@ exports.getUserAnalytics = async ({ limit = 10 } = {}) => {
       FROM users
     `),
 
-    // New users by month (last 12 months)
+    
     db.query(`
       SELECT
         DATE_TRUNC('month', created_at) AS month,
@@ -330,7 +330,7 @@ exports.getUserAnalytics = async ({ limit = 10 } = {}) => {
       ORDER BY month ASC
     `),
 
-    // Top customers by order count and spend
+    
     db.query(`
       SELECT
         u.id,
@@ -347,7 +347,7 @@ exports.getUserAnalytics = async ({ limit = 10 } = {}) => {
       LIMIT $1
     `, [safeLimit]),
 
-    // Active vs inactive (active = placed order in last 90 days)
+    
     db.query(`
       SELECT
         COUNT(DISTINCT u.id) FILTER (
@@ -386,14 +386,14 @@ exports.getUserAnalytics = async ({ limit = 10 } = {}) => {
   };
 };
 
-// =========================================
-// PROMOTIONS
-// =========================================
+
+
+
 
 exports.getPromotionAnalytics = async () => {
   const [summaryRes, byPromotionRes, couponRes] = await Promise.all([
 
-    // Platform-wide promotion summary
+    
     db.query(`
       SELECT
         COUNT(DISTINCT pu.promotion_id)::INTEGER  AS promotions_used,
@@ -406,7 +406,7 @@ exports.getPromotionAnalytics = async () => {
       WHERE o.status != 'cancelled'
     `),
 
-    // Per-promotion breakdown
+    
     db.query(`
       SELECT
         p.id                                          AS promotion_id,
@@ -428,7 +428,7 @@ exports.getPromotionAnalytics = async () => {
       ORDER BY total_discount_granted DESC
     `),
 
-    // Per-coupon breakdown
+    
     db.query(`
       SELECT
         pc.id                                          AS coupon_id,
@@ -478,16 +478,16 @@ exports.getPromotionAnalytics = async () => {
   };
 };
 
-// =========================================
-// INVENTORY
-// =========================================
+
+
+
 
 exports.getInventoryAnalytics = async ({ limit = 20 } = {}) => {
   const safeLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
 
   const [lowStockRes, outOfStockRes, mostRestockedRes, mostAdjustedRes] = await Promise.all([
 
-    // Low stock variants (1–5 units)
+    
     db.query(`
       SELECT
         pv.id          AS variant_id,
@@ -506,7 +506,7 @@ exports.getInventoryAnalytics = async ({ limit = 20 } = {}) => {
       LIMIT $1
     `, [safeLimit]),
 
-    // Out of stock variants
+    
     db.query(`
       SELECT
         pv.id          AS variant_id,
@@ -524,7 +524,7 @@ exports.getInventoryAnalytics = async ({ limit = 20 } = {}) => {
       LIMIT $1
     `, [safeLimit]),
 
-    // Most restocked products
+    
     db.query(`
       SELECT
         p.id           AS product_id,
@@ -541,7 +541,7 @@ exports.getInventoryAnalytics = async ({ limit = 20 } = {}) => {
       LIMIT $1
     `, [safeLimit]),
 
-    // Most adjusted (admin_edit) — signals pricing or count corrections
+    
     db.query(`
       SELECT
         p.id           AS product_id,
@@ -567,16 +567,16 @@ exports.getInventoryAnalytics = async ({ limit = 20 } = {}) => {
   };
 };
 
-// =========================================
-// REVIEWS
-// =========================================
+
+
+
 
 exports.getReviewAnalytics = async ({ limit = 10 } = {}) => {
   const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
 
   const [summaryRes, topRatedRes, lowestRatedRes, mostReviewedRes] = await Promise.all([
 
-    // Platform summary
+    
     db.query(`
       SELECT
         COUNT(*)::INTEGER          AS total_reviews,
@@ -589,7 +589,7 @@ exports.getReviewAnalytics = async ({ limit = 10 } = {}) => {
       FROM reviews
     `),
 
-    // Top rated products (min 3 reviews for statistical relevance)
+    
     db.query(`
       SELECT
         p.id                                            AS product_id,
@@ -608,7 +608,7 @@ exports.getReviewAnalytics = async ({ limit = 10 } = {}) => {
       LIMIT $1
     `, [safeLimit]),
 
-    // Lowest rated products (min 3 reviews)
+    
     db.query(`
       SELECT
         p.id                                            AS product_id,
@@ -627,7 +627,7 @@ exports.getReviewAnalytics = async ({ limit = 10 } = {}) => {
       LIMIT $1
     `, [safeLimit]),
 
-    // Most reviewed products
+    
     db.query(`
       SELECT
         p.id                                            AS product_id,
@@ -667,12 +667,12 @@ exports.getReviewAnalytics = async ({ limit = 10 } = {}) => {
   };
 };
 
-// =========================================
-// DASHBOARD (aggregated single payload)
-// =========================================
+
+
+
 
 exports.getDashboard = async () => {
-  // Run all top-level queries in parallel — each is independent
+  
   const [
     overview,
     revenueData,
@@ -687,7 +687,7 @@ exports.getDashboard = async () => {
     exports.getReviewAnalytics({ limit: 5 }),
   ]);
 
-  // Order volume last 7 days — small focused query for dashboard widget
+  
   const recentOrdersRes = await db.query(`
     SELECT
       DATE_TRUNC('day', created_at)  AS day,

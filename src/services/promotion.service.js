@@ -1,9 +1,9 @@
 const db = require('../config/db');
 
 
-// =========================================
-// GET AUTOMATIC PROMOTIONS
-// =========================================
+
+
+
 
 exports.getAutomaticPromotions = async (client = db) => {
 
@@ -21,9 +21,9 @@ exports.getAutomaticPromotions = async (client = db) => {
 };
 
 
-// =========================================
-// VALIDATE COUPON
-// =========================================
+
+
+
 
 exports.validateCoupon = async (code, client = db) => {
 
@@ -55,7 +55,7 @@ exports.validateCoupon = async (code, client = db) => {
     throw err;
   }
   
-// coupon usage limit
+
   if (coupon.coupon_usage_limit) {
     const used = await client.query(
       `SELECT COUNT(*)::INTEGER AS count
@@ -68,7 +68,7 @@ exports.validateCoupon = async (code, client = db) => {
     }
   }
 
-  // coupon expiry
+  
   if (
     coupon.expires_at &&
     new Date(coupon.expires_at) < new Date()
@@ -78,7 +78,7 @@ exports.validateCoupon = async (code, client = db) => {
     throw err;
   }
 
-  // promotion dates
+  
   if (
     coupon.start_date &&
     new Date(coupon.start_date) > new Date()
@@ -100,9 +100,9 @@ exports.validateCoupon = async (code, client = db) => {
   return coupon;
 };
 
-// =========================================
-// GET PROMOTION PRODUCTS
-// =========================================
+
+
+
 
 exports.getPromotionProducts = async (promotionId, client = db) => {
 
@@ -120,9 +120,9 @@ exports.getPromotionProducts = async (promotionId, client = db) => {
   );
 };
 
-// =========================================
-// GET PROMOTION CATEGORIES
-// =========================================
+
+
+
 
 exports.getPromotionCategories =
 async (promotionId, client = db) => {
@@ -141,9 +141,9 @@ async (promotionId, client = db) => {
   );
 };
 
-// =========================================
-// VALIDATE PROMOTION CONDITIONS
-// =========================================
+
+
+
 
 exports.validatePromotionConditions =
 async ({
@@ -152,9 +152,9 @@ async ({
   subtotal
 }, client = db) => {
 
-  // =====================================
-  // MIN CART TOTAL
-  // =====================================
+  
+  
+  
 
   if (
     promotion.min_cart_total &&
@@ -165,9 +165,9 @@ async ({
     return false;
   }
 
-  // =====================================
-  // FIRST ORDER ONLY
-  // =====================================
+  
+  
+  
 
   if (promotion.first_order_only) {
 
@@ -189,9 +189,9 @@ async ({
     }
   }
 
-  // =====================================
-  // GLOBAL USAGE LIMIT
-  // =====================================
+  
+  
+  
 
   if (promotion.usage_limit) {
 
@@ -213,9 +213,9 @@ async ({
     }
   }
 
-  // =====================================
-  // USER USAGE LIMIT
-  // =====================================
+  
+  
+  
 
   if (promotion.usage_per_user) {
 
@@ -241,9 +241,9 @@ async ({
     }
   }
 
-  // =====================================
-  // USER TARGETING
-  // =====================================
+  
+  
+  
 
   const targetedUsers =
     await client.query(
@@ -255,7 +255,7 @@ async ({
       [promotion.id]
     );
 
-  // if promotion has user targeting
+  
   if (
     targetedUsers.rows.length > 0
   ) {
@@ -274,9 +274,9 @@ async ({
   return true;
 };
 
-// =========================================
-// GET ELIGIBLE ITEMS
-// =========================================
+
+
+
 
 exports.getEligibleItems =
 async (
@@ -297,7 +297,7 @@ async (
       client
     );
 
-  // no targeting => all items
+  
   if (
     productIds.length === 0 &&
     categoryIds.length === 0
@@ -324,9 +324,9 @@ async (
   });
 };
 
-// =========================================
-// RECORD PROMOTION USAGE
-// =========================================
+
+
+
 
 exports.recordPromotionUsage =
 async ({

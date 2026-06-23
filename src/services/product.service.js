@@ -5,7 +5,7 @@ exports.getAllProducts = async ({ page = 1, limit = 10, search, category }) => {
   const offset = (page - 1) * limit;
 
   const values     = [];
-  const conditions = ['p.deleted_at IS NULL'];  // always exclude soft-deleted
+  const conditions = ['p.deleted_at IS NULL'];  
 
   let query = `
     SELECT 
@@ -147,10 +147,10 @@ exports.getProductById = async (id) => {
 };
 
 
-/**
- * @param {object} data
- * @param {number} [adminId] - req.user.id from the controller
- */
+
+
+
+
 exports.createProduct = async (data, adminId = null) => {
   const name        = requireStr(data.name,        'name',        200);
   const description = optionalStr(data.description, 'description', 2000);
@@ -178,11 +178,11 @@ exports.createProduct = async (data, adminId = null) => {
 };
 
 
-/**
- * @param {number} id
- * @param {object} data
- * @param {number} [adminId] - req.user.id from the controller
- */
+
+
+
+
+
 exports.updateProduct = async (id, data, adminId = null) => {
   const name        = data.name        !== undefined
     ? requireStr(data.name,        'name',        200)
@@ -194,7 +194,7 @@ exports.updateProduct = async (id, data, adminId = null) => {
     ? optionalStr(data.brand,       'brand',       100)
     : undefined;
 
-  // Fetch existing so we can keep unchanged fields
+  
   const existing = await db.query(
     `SELECT * FROM products WHERE id = $1 AND deleted_at IS NULL`,
     [id]
@@ -230,10 +230,10 @@ exports.updateProduct = async (id, data, adminId = null) => {
 };
 
 
-/**
- * Soft delete — sets deleted_at instead of removing the row.
- * Order history and variant records remain intact.
- */
+
+
+
+
 exports.deleteProduct = async (id) => {
   const result = await db.query(`
     UPDATE products
@@ -243,5 +243,5 @@ exports.deleteProduct = async (id) => {
     RETURNING *
   `, [id]);
 
-  return result.rows[0]; // undefined if not found / already deleted
+  return result.rows[0]; 
 };

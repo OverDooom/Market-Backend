@@ -1,8 +1,8 @@
 const db = require('../config/db');
 
-// =========================================
-// GET WISHLIST
-// =========================================
+
+
+
 
 exports.getWishlist = async (userId) => {
   const result = await db.query(
@@ -62,12 +62,12 @@ exports.getWishlist = async (userId) => {
   return result.rows;
 };
 
-// =========================================
-// ADD ITEM
-// =========================================
+
+
+
 
 exports.addItem = async (userId, productId) => {
-  // validate product exists
+  
   const product = await db.query(
     `SELECT id FROM products WHERE id = $1`,
     [productId]
@@ -79,7 +79,7 @@ exports.addItem = async (userId, productId) => {
     throw err;
   }
 
-  // upsert — silently ignore if already in wishlist
+  
   const result = await db.query(
     `INSERT INTO wishlist_items (user_id, product_id)
      VALUES ($1, $2)
@@ -88,7 +88,7 @@ exports.addItem = async (userId, productId) => {
     [userId, productId]
   );
 
-  // already existed → fetch it
+  
   if (result.rows.length === 0) {
     const existing = await db.query(
       `SELECT * FROM wishlist_items
@@ -101,9 +101,9 @@ exports.addItem = async (userId, productId) => {
   return result.rows[0];
 };
 
-// =========================================
-// REMOVE ITEM
-// =========================================
+
+
+
 
 exports.removeItem = async (userId, productId) => {
   const result = await db.query(
@@ -122,9 +122,9 @@ exports.removeItem = async (userId, productId) => {
   return result.rows[0];
 };
 
-// =========================================
-// CLEAR WISHLIST
-// =========================================
+
+
+
 
 exports.clearWishlist = async (userId) => {
   await db.query(
@@ -135,9 +135,9 @@ exports.clearWishlist = async (userId) => {
   return { message: 'Wishlist cleared' };
 };
 
-// =========================================
-// CHECK IF PRODUCT IS IN WISHLIST
-// =========================================
+
+
+
 
 exports.isInWishlist = async (userId, productId) => {
   const result = await db.query(

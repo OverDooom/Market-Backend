@@ -19,8 +19,8 @@ module.exports = (req, res, next) => {
     next();
   } catch (err) {
 
-    // TokenExpiredError → client should attempt a refresh
-    // JsonWebTokenError  → token is malformed/invalid, must log in again
+    
+    
     if (err.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,

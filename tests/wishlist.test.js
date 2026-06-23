@@ -4,9 +4,9 @@ const db = require('../src/config/db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `wl_${suffix}_${Date.now()}@mail.com`;
@@ -44,9 +44,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// GET WISHLIST
-// =========================================
+
+
+
 
 describe('GET /api/wishlist', () => {
 
@@ -97,9 +97,9 @@ describe('GET /api/wishlist', () => {
 
 });
 
-// =========================================
-// ADD ITEM
-// =========================================
+
+
+
 
 describe('POST /api/wishlist', () => {
 
@@ -172,9 +172,9 @@ describe('POST /api/wishlist', () => {
 
 });
 
-// =========================================
-// CHECK ITEM
-// =========================================
+
+
+
 
 describe('GET /api/wishlist/:productId/check', () => {
 
@@ -223,9 +223,9 @@ describe('GET /api/wishlist/:productId/check', () => {
 
 });
 
-// =========================================
-// REMOVE ITEM
-// =========================================
+
+
+
 
 describe('DELETE /api/wishlist/:productId', () => {
 
@@ -277,9 +277,9 @@ describe('DELETE /api/wishlist/:productId', () => {
 
 });
 
-// =========================================
-// CLEAR WISHLIST
-// =========================================
+
+
+
 
 describe('DELETE /api/wishlist', () => {
 

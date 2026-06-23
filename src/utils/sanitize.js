@@ -1,24 +1,24 @@
-// src/utils/sanitize.js
 
-/**
- * Trim a string value. Returns null if the result is empty.
- * Prevents storing "  " as a valid value.
- */
+
+
+
+
+
 exports.trimStr = (val) => {
   if (val === null || val === undefined) return null;
   const trimmed = String(val).trim();
   return trimmed.length > 0 ? trimmed : null;
 };
 
-/**
- * Assert a trimmed string is present and within length bounds.
- * Throws a 400 error if validation fails.
- *
- * @param {string} val    - raw input value
- * @param {string} field  - field name for error messages
- * @param {number} max    - maximum allowed length
- * @param {number} [min]  - minimum allowed length (default 1)
- */
+
+
+
+
+
+
+
+
+
 exports.requireStr = (val, field, max, min = 1) => {
   const trimmed = exports.trimStr(val);
 
@@ -43,14 +43,14 @@ exports.requireStr = (val, field, max, min = 1) => {
   return trimmed;
 };
 
-/**
- * Validate an optional string — trim it if present, enforce max length.
- * Returns null if not provided or empty.
- *
- * @param {string} val
- * @param {string} field
- * @param {number} max
- */
+
+
+
+
+
+
+
+
 exports.optionalStr = (val, field, max) => {
   if (val === null || val === undefined || String(val).trim() === '') {
     return null;

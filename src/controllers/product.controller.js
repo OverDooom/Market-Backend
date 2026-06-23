@@ -44,7 +44,7 @@ exports.createProduct = async (req, res, next) => {
       throw err;
     }
 
-    // Pass admin id so it's recorded in created_by
+    
     const newProduct = await productService.createProduct(
       req.body,
       req.user?.id ?? null
@@ -66,7 +66,7 @@ exports.updateProduct = async (req, res, next) => {
       throw err;
     }
 
-    // Pass admin id so it's recorded in updated_by
+    
     const updated = await productService.updateProduct(
       id,
       req.body,

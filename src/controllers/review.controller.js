@@ -1,6 +1,6 @@
 const reviewService = require('../services/review.service');
 
-// CREATE REVIEW
+
 exports.createReview = async (req, res, next) => {
   try {
 
@@ -22,7 +22,7 @@ exports.createReview = async (req, res, next) => {
   }
 };
 
-// GET PRODUCT REVIEWS
+
 exports.getProductReviews =
 async (req, res, next) => {
   try {
@@ -43,7 +43,7 @@ async (req, res, next) => {
   }
 };
 
-// UPDATE REVIEW
+
 exports.updateReview =
 async (req, res, next) => {
   try {
@@ -62,7 +62,7 @@ async (req, res, next) => {
   }
 };
 
-// DELETE REVIEW
+
 exports.deleteReview =
 async (req, res, next) => {
   try {

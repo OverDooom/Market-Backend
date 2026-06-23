@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-// GET or CREATE cart for user
+
 exports.getOrCreateCart = async (userId) => {
   let cart = await db.query(
     `SELECT * FROM carts WHERE user_id = $1`,
@@ -21,7 +21,7 @@ exports.getOrCreateCart = async (userId) => {
   return newCart.rows[0];
 };
 
-// ADD item to cart
+
 exports.addItem = async (cartId, variantId, quantity) => {
   const existing = await db.query(
     `SELECT * FROM cart_items 
@@ -51,7 +51,7 @@ exports.addItem = async (cartId, variantId, quantity) => {
   return result.rows[0];
 };
 
-// GET cart with items
+
 exports.getCart = async (userId) => {
   const cart = await exports.getOrCreateCart(userId);
 
@@ -86,7 +86,7 @@ exports.getCart = async (userId) => {
   };
 };
 
-// REMOVE item
+
 exports.removeItem = async (cartId, itemId) => {
   const result = await db.query(
     `DELETE FROM cart_items
@@ -98,7 +98,7 @@ exports.removeItem = async (cartId, itemId) => {
   return result.rows[0];
 };
 
-// CLEAR cart
+
 exports.clearCart = async (cartId) => {
   await db.query(
     `DELETE FROM cart_items WHERE cart_id = $1`,
@@ -106,9 +106,9 @@ exports.clearCart = async (cartId) => {
   );
 };
 
-// =========================================
-// GET CART FOR CHECKOUT
-// =========================================
+
+
+
 
 exports.getCartForCheckout =
 async (

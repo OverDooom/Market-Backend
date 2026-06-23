@@ -5,9 +5,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { adminToken } = require('./helpers/auth');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `notif_${suffix}_${Date.now()}@mail.com`;
@@ -55,9 +55,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// GET NOTIFICATIONS
-// =========================================
+
+
+
 
 describe('GET /api/notifications', () => {
 
@@ -107,9 +107,9 @@ describe('GET /api/notifications', () => {
 
 });
 
-// =========================================
-// MARK AS READ
-// =========================================
+
+
+
 
 describe('PUT /api/notifications/:id/read', () => {
 
@@ -156,9 +156,9 @@ describe('PUT /api/notifications/:id/read', () => {
 
 });
 
-// =========================================
-// MARK ALL AS READ
-// =========================================
+
+
+
 
 describe('PUT /api/notifications/read-all', () => {
 
@@ -202,9 +202,9 @@ describe('PUT /api/notifications/read-all', () => {
 
 });
 
-// =========================================
-// CREATE NOTIFICATION (admin only — test helper route)
-// =========================================
+
+
+
 
 describe('POST /api/notifications (admin)', () => {
 

@@ -1,12 +1,12 @@
 const promotionAdminService = require('../services/promotion.admin.service');
 
-// =========================================
-// LIST PROMOTIONS
-// =========================================
+
+
+
 
 exports.listPromotions = async (req, res, next) => {
   try {
-    // ?active=true|false  (optional filter)
+    
     let active;
     if (req.query.active !== undefined) {
       active = req.query.active === 'true';
@@ -19,9 +19,9 @@ exports.listPromotions = async (req, res, next) => {
   }
 };
 
-// =========================================
-// GET SINGLE PROMOTION
-// =========================================
+
+
+
 
 exports.getPromotion = async (req, res, next) => {
   try {
@@ -34,9 +34,9 @@ exports.getPromotion = async (req, res, next) => {
   }
 };
 
-// =========================================
-// CREATE PROMOTION
-// =========================================
+
+
+
 
 exports.createPromotion = async (req, res, next) => {
   try {
@@ -47,9 +47,9 @@ exports.createPromotion = async (req, res, next) => {
   }
 };
 
-// =========================================
-// UPDATE PROMOTION
-// =========================================
+
+
+
 
 exports.updatePromotion = async (req, res, next) => {
   try {
@@ -63,9 +63,9 @@ exports.updatePromotion = async (req, res, next) => {
   }
 };
 
-// =========================================
-// TOGGLE ACTIVE
-// =========================================
+
+
+
 
 exports.togglePromotion = async (req, res, next) => {
   try {
@@ -78,9 +78,9 @@ exports.togglePromotion = async (req, res, next) => {
   }
 };
 
-// =========================================
-// DELETE PROMOTION
-// =========================================
+
+
+
 
 exports.deletePromotion = async (req, res, next) => {
   try {
@@ -93,9 +93,9 @@ exports.deletePromotion = async (req, res, next) => {
   }
 };
 
-// =========================================
-// USAGE STATS
-// =========================================
+
+
+
 
 exports.getUsageStats = async (req, res, next) => {
   try {
@@ -108,9 +108,9 @@ exports.getUsageStats = async (req, res, next) => {
   }
 };
 
-// =========================================
-// COUPONS — ADD
-// =========================================
+
+
+
 
 exports.addCoupons = async (req, res, next) => {
   try {
@@ -124,9 +124,9 @@ exports.addCoupons = async (req, res, next) => {
   }
 };
 
-// =========================================
-// COUPONS — TOGGLE
-// =========================================
+
+
+
 
 exports.toggleCoupon = async (req, res, next) => {
   try {
@@ -140,9 +140,9 @@ exports.toggleCoupon = async (req, res, next) => {
   }
 };
 
-// =========================================
-// COUPONS — DELETE
-// =========================================
+
+
+
 
 exports.deleteCoupon = async (req, res, next) => {
   try {

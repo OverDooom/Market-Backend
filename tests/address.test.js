@@ -4,11 +4,11 @@ const db = require('../src/config/db');
 const { adminToken } = require('./helpers/auth');
 const jwt = require('jsonwebtoken');
 
-// =========================================
-// HELPERS
-// =========================================
 
-/** Create a real user and return a signed token + user id. */
+
+
+
+
 async function createUser(suffix) {
   const email = `addr_${suffix}_${Date.now()}@mail.com`;
   const bcrypt = require('bcrypt');
@@ -43,9 +43,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// GET ALL ADDRESSES
-// =========================================
+
+
+
 
 describe('GET /api/addresses', () => {
 
@@ -64,7 +64,7 @@ describe('GET /api/addresses', () => {
   });
 
   test('only returns addresses belonging to the user', async () => {
-    // Create a second user whose addresses should NOT appear
+    
     const other = await createUser('other');
     createdUserIds.push(other.id);
 
@@ -84,9 +84,9 @@ describe('GET /api/addresses', () => {
 
 });
 
-// =========================================
-// GET SINGLE ADDRESS
-// =========================================
+
+
+
 
 describe('GET /api/addresses/:id', () => {
 
@@ -137,9 +137,9 @@ describe('GET /api/addresses/:id', () => {
 
 });
 
-// =========================================
-// CREATE ADDRESS
-// =========================================
+
+
+
 
 describe('POST /api/addresses', () => {
 
@@ -192,9 +192,9 @@ describe('POST /api/addresses', () => {
 
 });
 
-// =========================================
-// UPDATE ADDRESS
-// =========================================
+
+
+
 
 describe('PUT /api/addresses/:id', () => {
 
@@ -260,9 +260,9 @@ describe('PUT /api/addresses/:id', () => {
 
 });
 
-// =========================================
-// DELETE ADDRESS
-// =========================================
+
+
+
 
 describe('DELETE /api/addresses/:id', () => {
 
@@ -277,7 +277,7 @@ describe('DELETE /api/addresses/:id', () => {
 
     expect(res.status).toBe(401);
 
-    // cleanup
+    
     await db.query(`DELETE FROM addresses WHERE id = $1`, [addr.rows[0].id]);
   });
 
@@ -312,7 +312,7 @@ describe('DELETE /api/addresses/:id', () => {
 
     expect(res.status).toBe(404);
 
-    // cleanup
+    
     await db.query(`DELETE FROM addresses WHERE id = $1`, [id]);
   });
 

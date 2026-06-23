@@ -2,7 +2,7 @@ const request = require('supertest');
 const app = require('../src/app');
 const db = require('../src/config/db');
 
-// Track every user created so we can clean up after all tests
+
 const createdUserIds = [];
 
 async function registerAndLogin(suffix) {
@@ -19,8 +19,8 @@ async function registerAndLogin(suffix) {
     .post('/api/auth/login')
     .send({ email, password });
 
-  // Fail loudly so a rate-limit or unexpected error surfaces here,
-  // not as a confusing 400/401 several lines later in the real test.
+  
+  
 
   
   if (login.status !== 200) {
@@ -47,9 +47,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// REGISTER
-// =========================================
+
+
+
 
 describe('Register', () => {
 
@@ -109,9 +109,9 @@ describe('Register', () => {
 
 });
 
-// =========================================
-// LOGIN
-// =========================================
+
+
+
 
 describe('Login', () => {
 
@@ -172,9 +172,9 @@ describe('Login', () => {
 
 });
 
-// =========================================
-// REFRESH TOKEN
-// =========================================
+
+
+
 
 describe('Refresh Token', () => {
 
@@ -227,19 +227,19 @@ describe('Refresh Token', () => {
     const session = await registerAndLogin('family_invalidate');
     const oldToken = session.refresh_token;
 
-    // Rotate once
+    
     const rotated = await request(app)
       .post('/api/auth/refresh')
       .send({ refresh_token: oldToken });
 
     expect(rotated.status).toBe(200);
 
-    // Replay the old token — should revoke the whole family
+    
     await request(app)
       .post('/api/auth/refresh')
       .send({ refresh_token: oldToken });
 
-    // The new token from rotation should now also be invalid
+    
     const res = await request(app)
       .post('/api/auth/refresh')
       .send({ refresh_token: rotated.body.refresh_token });
@@ -249,9 +249,9 @@ describe('Refresh Token', () => {
 
 });
 
-// =========================================
-// LOGOUT
-// =========================================
+
+
+
 
 describe('Logout', () => {
 
@@ -289,9 +289,9 @@ describe('Logout', () => {
 
 });
 
-// =========================================
-// LOGOUT ALL
-// =========================================
+
+
+
 
 describe('Logout All', () => {
 
@@ -315,17 +315,17 @@ describe('Logout All', () => {
   test('all refresh tokens invalid after logout-all', async () => {
     const session = await registerAndLogin('logout_all_verify');
 
-    // Get a second token by logging in again
+    
     const login2 = await request(app)
       .post('/api/auth/login')
       .send({ email: session.email, password: 'Password123' });
 
-    // Logout all using the first access token
+    
     await request(app)
       .post('/api/auth/logout-all')
       .set('Authorization', `Bearer ${session.access_token}`);
 
-    // Both refresh tokens should now be revoked
+    
     const r1 = await request(app)
       .post('/api/auth/refresh')
       .send({ refresh_token: session.refresh_token });

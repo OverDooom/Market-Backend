@@ -4,9 +4,9 @@ const db = require('../src/config/db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `rev_${suffix}_${Date.now()}@mail.com`;
@@ -43,9 +43,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// CREATE REVIEW
-// =========================================
+
+
+
 
 describe('POST /api/reviews/product/:productId', () => {
 
@@ -139,9 +139,9 @@ describe('POST /api/reviews/product/:productId', () => {
 
 });
 
-// =========================================
-// GET PRODUCT REVIEWS
-// =========================================
+
+
+
 
 describe('GET /api/reviews/product/:productId', () => {
 
@@ -190,9 +190,9 @@ describe('GET /api/reviews/product/:productId', () => {
 
 });
 
-// =========================================
-// UPDATE REVIEW
-// =========================================
+
+
+
 
 describe('PUT /api/reviews/:id', () => {
 
@@ -299,9 +299,9 @@ describe('PUT /api/reviews/:id', () => {
 
 });
 
-// =========================================
-// DELETE REVIEW
-// =========================================
+
+
+
 
 describe('DELETE /api/reviews/:id', () => {
 

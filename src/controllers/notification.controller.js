@@ -1,7 +1,7 @@
 const notificationService =
 require('../services/notification.service');
 
-// GET USER NOTIFICATIONS
+
 exports.getNotifications =
 async (req, res, next) => {
   try {
@@ -17,7 +17,7 @@ async (req, res, next) => {
   }
 };
 
-// MARK AS READ
+
 exports.markAsRead =
 async (req, res, next) => {
   try {
@@ -36,7 +36,7 @@ async (req, res, next) => {
   }
 };
 
-// MARK ALL AS READ
+
 exports.markAllAsRead =
 async (req, res, next) => {
   try {
@@ -51,7 +51,7 @@ async (req, res, next) => {
     next(err);
   }
 };
-// test only ------------------------------------------
+
 exports.createNotification =
 async (req, res, next) => {
   try {

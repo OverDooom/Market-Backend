@@ -4,9 +4,9 @@ const db = require('../src/config/db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `cart_${suffix}_${Date.now()}@mail.com`;
@@ -29,11 +29,11 @@ beforeAll(async () => {
   user = await createUser('main');
   createdUserIds.push(user.id);
 
-  // Ensure base data exists
+  
   await db.query(`INSERT INTO categories (id, name) VALUES (1,'Test Category') ON CONFLICT DO NOTHING`);
   await db.query(`INSERT INTO attributes (id, name) VALUES (1,'Size') ON CONFLICT DO NOTHING`);
 
-  // Create a product and two variants to use in cart tests
+  
   const prod = await db.query(
     `INSERT INTO products (name, category_id) VALUES ('Cart Test Product', 1) RETURNING id`
   );
@@ -63,7 +63,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Clean up carts, then users, then variants/products/attribute_values
+  
   await db.query(`DELETE FROM cart_items USING carts WHERE cart_items.cart_id = carts.id AND carts.user_id = ANY($1::int[])`, [createdUserIds]);
   await db.query(`DELETE FROM carts WHERE user_id = ANY($1::int[])`, [createdUserIds]);
   await db.query(`DELETE FROM users WHERE id = ANY($1::int[])`, [createdUserIds]);
@@ -74,9 +74,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// GET CART
-// =========================================
+
+
+
 
 describe('GET /api/cart', () => {
 
@@ -110,9 +110,9 @@ describe('GET /api/cart', () => {
 
 });
 
-// =========================================
-// ADD ITEM
-// =========================================
+
+
+
 
 describe('POST /api/cart/items', () => {
 
@@ -181,9 +181,9 @@ describe('POST /api/cart/items', () => {
 
 });
 
-// =========================================
-// REMOVE ITEM
-// =========================================
+
+
+
 
 describe('DELETE /api/cart/items/:itemId', () => {
 
@@ -218,9 +218,9 @@ describe('DELETE /api/cart/items/:itemId', () => {
 
 });
 
-// =========================================
-// CLEAR CART
-// =========================================
+
+
+
 
 describe('DELETE /api/cart', () => {
 

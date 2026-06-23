@@ -1,9 +1,9 @@
 const adminService              = require('../services/admin.service');
 const promotionAdminService     = require('../services/promotion.admin.service');
 
-// =========================================
-// DASHBOARD
-// =========================================
+
+
+
 
 exports.getDashboardStats = async (req, res, next) => {
   try {
@@ -14,9 +14,9 @@ exports.getDashboardStats = async (req, res, next) => {
   }
 };
 
-// =========================================
-// USERS
-// =========================================
+
+
+
 
 exports.getAllUsers = async (req, res, next) => {
   try {
@@ -89,9 +89,9 @@ exports.getUserWishlist = async (req, res, next) => {
   }
 };
 
-// =========================================
-// ORDERS
-// =========================================
+
+
+
 
 exports.getAllOrders = async (req, res, next) => {
   try {
@@ -116,9 +116,9 @@ exports.getOrderById = async (req, res, next) => {
   }
 };
 
-// =========================================
-// REVIEWS
-// =========================================
+
+
+
 
 exports.getAllReviews = async (req, res, next) => {
   try {
@@ -143,9 +143,9 @@ exports.deleteReview = async (req, res, next) => {
   }
 };
 
-// =========================================
-// NOTIFICATIONS
-// =========================================
+
+
+
 
 exports.getAllNotifications = async (req, res, next) => {
   try {
@@ -196,9 +196,9 @@ exports.deleteNotification = async (req, res, next) => {
   }
 };
 
-// =========================================
-// WISHLIST
-// =========================================
+
+
+
 
 exports.getWishlistStats = async (req, res, next) => {
   try {
@@ -211,9 +211,9 @@ exports.getWishlistStats = async (req, res, next) => {
   }
 };
 
-// =========================================
-// PROMOTIONS  (delegates to promotion admin service)
-// =========================================
+
+
+
 
 exports.listPromotions = async (req, res, next) => {
   try {

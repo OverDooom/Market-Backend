@@ -80,7 +80,7 @@ exports.updateVariant = async (req, res, next) => {
       throw err;
     }
 
-    // Pass admin id so the inventory delta is attributed correctly
+    
     const updated = await variantService.updateVariant(
       id,
       req.body,

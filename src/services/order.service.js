@@ -7,9 +7,9 @@ const inventoryService = require('./inventory.service');
 const userActivityService = require('./user_activity.service');
 
 
-// =========================================
-// STATE MACHINE
-// =========================================
+
+
+
 
 const TRANSITIONS = {
   pending:   ['paid', 'cancelled'],
@@ -40,9 +40,9 @@ const NOTIFICATION_COPY = {
   },
 };
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 function assertValidTransition(fromStatus, toStatus) {
   const allowed = TRANSITIONS[fromStatus];
@@ -81,16 +81,16 @@ async function recordHistory({
   );
 }
 
-/**
- * Restore stock AND record inventory transactions.
- * Must be called inside a transaction (client required).
- *
- * @param {*}      client
- * @param {number} orderId
- * @param {number} [changedBy] - user/admin id performing the cancellation
- */
+
+
+
+
+
+
+
+
 async function restoreStock(client, orderId, changedBy = null) {
-  // Fetch items before updating so we can record each movement
+  
   const itemsRes = await client.query(
     `SELECT product_variant_id AS variant_id, quantity
      FROM order_items
@@ -98,7 +98,7 @@ async function restoreStock(client, orderId, changedBy = null) {
     [orderId]
   );
 
-  // Restore quantities
+  
   await client.query(
     `UPDATE product_variants pv
      SET quantity = pv.quantity + oi.quantity
@@ -108,11 +108,11 @@ async function restoreStock(client, orderId, changedBy = null) {
     [orderId]
   );
 
-  // Record each restoration in the inventory ledger
+  
   await inventoryService.recordBulk({
     client,
     items:         itemsRes.rows,
-    multiplier:    +1,              // positive = stock returned
+    multiplier:    +1,              
     reason:        'cancellation',
     referenceId:   orderId,
     referenceType: 'order',
@@ -137,9 +137,9 @@ async function notifyOwner(order, toStatus) {
   }
 }
 
-// =========================================
-// CHECKOUT
-// =========================================
+
+
+
 
 exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
   const client = await db.connect();
@@ -147,14 +147,14 @@ exports.checkout = async ({ userId, addressId, couponCodes = [] }) => {
   try {
 await client.query('BEGIN');
 
-// 1. Validate addressId present in request body
+
 if (!addressId) {
   const err = new Error('address_id is required');
   err.status = 400;
   throw err;
 }
 
-// 2. Validate address belongs to this user
+
 const addrCheck = await client.query(
   `SELECT id FROM addresses WHERE id = $1 AND user_id = $2`,
   [addressId, userId]
@@ -166,7 +166,7 @@ if (!addrCheck.rows[0]) {
   throw err;
 }
 
-// 3. Load cart with row-level lock
+
 const cart = await cartService.getCartForCheckout(userId, client);
 
 if (cart.items.length === 0) {
@@ -175,7 +175,7 @@ if (cart.items.length === 0) {
   throw err;
 }
 
-// 4. Validate stock for each item
+
 for (const item of cart.items) {
   if (item.quantity > item.stock_quantity) {
     const err = new Error(`Insufficient stock for ${item.product_name}`);
@@ -184,7 +184,7 @@ for (const item of cart.items) {
   }
 }
 
-// 5. Calculate pricing (with optional coupons)
+
 const pricing = await pricingService.calculateCart({
   client,
   userId,
@@ -192,7 +192,7 @@ const pricing = await pricingService.calculateCart({
   couponCodes,
 });
 
-// 6. Create order record
+
 const orderResult = await client.query(
   `INSERT INTO orders
      (user_id, address_id, subtotal, discount_total, total_amount, status)
@@ -203,7 +203,7 @@ const orderResult = await client.query(
 
 const order = orderResult.rows[0];
 
-// 7. Create order items
+
 for (const item of cart.items) {
   await client.query(
     `INSERT INTO order_items
@@ -213,7 +213,7 @@ for (const item of cart.items) {
   );
 }
 
-// 8. Deduct stock
+
 for (const item of cart.items) {
   await client.query(
     `UPDATE product_variants
@@ -223,7 +223,7 @@ for (const item of cart.items) {
   );
 }
 
-// 9. Record stock deductions in inventory ledger
+
 await inventoryService.recordBulk({
   client,
   items:         cart.items,
@@ -234,7 +234,7 @@ await inventoryService.recordBulk({
   createdBy:     userId,
 });
 
-// 10. Record promotion usage
+
 await promotionService.recordPromotionUsage({
   client,
   promotions: pricing.discounts,
@@ -242,7 +242,7 @@ await promotionService.recordPromotionUsage({
   orderId: order.id,
 });
 
-// 11. Record initial status in history
+
 await recordHistory({
   client,
   orderId:    order.id,
@@ -252,7 +252,7 @@ await recordHistory({
   notes:      'Order placed',
 });
 
-// 12. Clear cart
+
 await client.query(
   `DELETE FROM cart_items WHERE cart_id = $1`,
   [cart.id]
@@ -260,7 +260,7 @@ await client.query(
 
 await client.query('COMMIT');
 
-// Record activity (after commit so it's always on a real order)
+
     await userActivityService.record(userId, 'place_order');
 
 return { order, pricing };
@@ -273,9 +273,9 @@ return { order, pricing };
   }
 };
 
-// =========================================
-// ADMIN — UPDATE ORDER STATUS
-// =========================================
+
+
+
 
 exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => {
   const orderRes = await db.query(
@@ -303,7 +303,7 @@ exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => 
       [toStatus, orderId]
     );
 
-    // Restore stock (and record inventory) when cancelling a restoreable order
+    
     if (toStatus === 'cancelled' && RESTORE_STOCK_FROM.has(order.status)) {
       await restoreStock(client, orderId, adminId);
     }
@@ -333,9 +333,9 @@ exports.updateOrderStatus = async (orderId, toStatus, adminId, notes = null) => 
   }
 };
 
-// =========================================
-// USER — CANCEL OWN ORDER
-// =========================================
+
+
+
 
 exports.cancelOrder = async (orderId, userId) => {
   const orderRes = await db.query(
@@ -369,7 +369,7 @@ exports.cancelOrder = async (orderId, userId) => {
       [orderId]
     );
 
-    // Restore stock and record inventory transactions
+    
     await restoreStock(client, orderId, userId);
 
     await recordHistory({
@@ -399,9 +399,9 @@ exports.cancelOrder = async (orderId, userId) => {
   }
 };
 
-// =========================================
-// GET STATUS HISTORY FOR AN ORDER
-// =========================================
+
+
+
 
 exports.getOrderHistory = async (orderId, userId, isAdmin = false) => {
   if (!isAdmin) {
@@ -444,9 +444,9 @@ exports.getOrderHistory = async (orderId, userId, isAdmin = false) => {
   return result.rows;
 };
 
-// =========================================
-// GET MY ORDERS
-// =========================================
+
+
+
 
 exports.getMyOrders = async (userId) => {
   const result = await db.query(
@@ -456,9 +456,9 @@ exports.getMyOrders = async (userId) => {
   return result.rows;
 };
 
-// =========================================
-// GET SINGLE ORDER
-// =========================================
+
+
+
 
 exports.getOrderById = async (orderId, userId) => {
   const orderRes = await db.query(

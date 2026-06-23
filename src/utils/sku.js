@@ -1,14 +1,14 @@
 const db = require('../config/db');
 
-// map attribute order (VERY IMPORTANT)
+
 const ATTRIBUTE_ORDER = {
   Color: 1,
   Size: 2
-  // add more if needed
+  
 };
 
 async function generateSKU({ variantId, productId }) {
-  // 1. Get product info
+  
   const productRes = await db.query(
     `SELECT p.name, c.name AS category_name
      FROM products p
@@ -19,11 +19,11 @@ async function generateSKU({ variantId, productId }) {
 
   const product = productRes.rows[0];
 
-  // clean product + category
+  
   const categoryCode = cleanCode(product.category_name, 3);
   const productCode = cleanCode(product.name, 8);
 
-  // 2. Get attribute codes
+  
   const attrRes = await db.query(
     `SELECT 
         av.code AS value_code,
@@ -37,18 +37,18 @@ async function generateSKU({ variantId, productId }) {
 
   let attributes = attrRes.rows;
 
-  // 3. Sort attributes (CRITICAL)
+  
   attributes.sort((a, b) => {
     return (ATTRIBUTE_ORDER[a.attribute_name] || 99) -
            (ATTRIBUTE_ORDER[b.attribute_name] || 99);
   });
 
-  // 4. Build attribute part
+  
   const attrPart = attributes
     .map(a => a.value_code)
     .join('-');
 
-  // 5. Generate sequence number
+  
   const countRes = await db.query(
     `SELECT COUNT(*) FROM product_variants WHERE product_id = $1`,
     [productId]
@@ -58,17 +58,17 @@ async function generateSKU({ variantId, productId }) {
 
   const sequence = String(count).padStart(4, '0');
 
-  // 6. Final SKU
+  
   return `${categoryCode}-${productCode}-${attrPart}-${sequence}`;
 }
 
-// helper to clean strings
+
 function cleanCode(str, maxLength) {
   if (!str) return 'UNK';
 
   return str
     .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '') // remove spaces/symbols
+    .replace(/[^A-Z0-9]/g, '') 
     .substring(0, maxLength);
 }
 

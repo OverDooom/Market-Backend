@@ -1,6 +1,6 @@
 const wishlistService = require('../services/wishlist.service');
 
-// GET WISHLIST
+
 exports.getWishlist = async (req, res, next) => {
   try {
     const items = await wishlistService.getWishlist(req.user.id);
@@ -10,7 +10,7 @@ exports.getWishlist = async (req, res, next) => {
   }
 };
 
-// ADD ITEM
+
 exports.addItem = async (req, res, next) => {
   try {
     const productId = parseInt(req.body.product_id);
@@ -28,7 +28,7 @@ exports.addItem = async (req, res, next) => {
   }
 };
 
-// REMOVE ITEM
+
 exports.removeItem = async (req, res, next) => {
   try {
     const productId = parseInt(req.params.productId);
@@ -46,7 +46,7 @@ exports.removeItem = async (req, res, next) => {
   }
 };
 
-// CLEAR WISHLIST
+
 exports.clearWishlist = async (req, res, next) => {
   try {
     const result = await wishlistService.clearWishlist(req.user.id);
@@ -56,7 +56,7 @@ exports.clearWishlist = async (req, res, next) => {
   }
 };
 
-// CHECK IF PRODUCT IS IN WISHLIST
+
 exports.checkItem = async (req, res, next) => {
   try {
     const productId = parseInt(req.params.productId);

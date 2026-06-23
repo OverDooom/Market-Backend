@@ -5,18 +5,18 @@ const { randomUUID }        = require('crypto');
 const userActivityService = require('./user_activity.service');
 const { requireStr,optionalStr, validatePhone } = require('../utils/sanitize');
 
-// =========================================
-// HELPERS
-// =========================================
 
-/**
- * Generate an access + refresh token pair, store the refresh
- * token hash in the DB, and return both raw tokens to the caller.
- *
- * @param {object} user      - { id, role_name }
- * @param {string} familyId  - UUID shared by all tokens in this login session
- * @param {*}      client    - pg client or pool
- */
+
+
+
+
+
+
+
+
+
+
+
 async function createTokenPair(user, familyId, client = db) {
   const accessToken  = jwtUtils.generateAccessToken({
     id:   user.id,
@@ -37,12 +37,12 @@ async function createTokenPair(user, familyId, client = db) {
   return { accessToken, refreshToken };
 }
 
-// =========================================
-// REGISTER
-// =========================================
+
+
+
 
 exports.register = async ({ name, email, password }) => {
-  // Validate and sanitize
+  
   const cleanEmail = requireStr(email, 'email', 254);
   const cleanName  = optionalStr(name, 'name', 100);
 
@@ -65,7 +65,7 @@ exports.register = async ({ name, email, password }) => {
   }
 
   if (password.length > 72) {
-    // bcrypt silently truncates at 72 bytes — be explicit
+    
     const err = new Error('Password must be at most 72 characters');
     err.status = 400;
     throw err;
@@ -94,9 +94,9 @@ exports.register = async ({ name, email, password }) => {
   return result.rows[0];
 };
 
-// =========================================
-// LOGIN
-// =========================================
+
+
+
 
 exports.login = async ({ email, password }) => {
   if (!email || !password) {
@@ -129,7 +129,7 @@ exports.login = async ({ email, password }) => {
     throw err;
   }
 
-  // Each login starts a new token family (fresh UUID)
+  
 
   const familyId = randomUUID();
 
@@ -151,9 +151,9 @@ exports.login = async ({ email, password }) => {
   };
 };
 
-// =========================================
-// REFRESH  (rotation)
-// =========================================
+
+
+
 
 exports.refresh = async (rawRefreshToken) => {
   if (!rawRefreshToken) {
@@ -164,7 +164,7 @@ exports.refresh = async (rawRefreshToken) => {
 
   const tokenHash = jwtUtils.hashToken(rawRefreshToken);
 
-  // Look up the token — join user + role so we can rebuild the access token
+  
   const tokenRes = await db.query(
     `SELECT
         rt.*,
@@ -178,18 +178,18 @@ exports.refresh = async (rawRefreshToken) => {
 
   const stored = tokenRes.rows[0];
 
-  // Token not found at all
+  
   if (!stored) {
     const err = new Error('Invalid refresh token');
     err.status = 401;
     throw err;
   }
 
-  // ── Reuse detection ──────────────────────────────────────────
-  // If the token is already revoked, someone is replaying an old
-  // token. Assume the family is compromised: revoke every live
-  // token in the family and force the user to log in again.
-  // ─────────────────────────────────────────────────────────────
+  
+  
+  
+  
+  
   if (stored.revoked_at) {
     await db.query(
       `UPDATE refresh_tokens
@@ -206,7 +206,7 @@ exports.refresh = async (rawRefreshToken) => {
     throw err;
   }
 
-  // Expired
+  
   if (new Date(stored.expires_at) < new Date()) {
     await db.query(
       `UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $1`,
@@ -218,10 +218,10 @@ exports.refresh = async (rawRefreshToken) => {
     throw err;
   }
 
-  // ── Rotate ───────────────────────────────────────────────────
-  // Generate a new pair, revoke the old token (recording which
-  // token replaced it), keep the same family_id.
-  // ─────────────────────────────────────────────────────────────
+  
+  
+  
+  
   const newRefreshToken = jwtUtils.generateRefreshToken();
   const newHash         = jwtUtils.hashToken(newRefreshToken);
   const expiresAt       = jwtUtils.refreshTokenExpiresAt();
@@ -231,7 +231,7 @@ exports.refresh = async (rawRefreshToken) => {
     role: stored.role_name,
   });
 
-  // Revoke old, store new — both in one transaction
+  
   const client = await db.connect();
 
   try {
@@ -266,15 +266,15 @@ exports.refresh = async (rawRefreshToken) => {
   };
 };
 
-// =========================================
-// LOGOUT
-// =========================================
 
-/**
- * Revoke a single refresh token.
- * The access token is short-lived (15 min) so we don't track it —
- * it will expire on its own.
- */
+
+
+
+
+
+
+
+
 exports.logout = async (rawRefreshToken) => {
   if (!rawRefreshToken) {
     const err = new Error('Refresh token required');
@@ -284,7 +284,7 @@ exports.logout = async (rawRefreshToken) => {
 
   const tokenHash = jwtUtils.hashToken(rawRefreshToken);
 
-   // Look up who owns this token so we can record activity
+   
   const tokenRes = await db.query(
     `SELECT user_id FROM refresh_tokens WHERE token_hash = $1`,
     [tokenHash]
@@ -303,19 +303,19 @@ exports.logout = async (rawRefreshToken) => {
     await userActivityService.record(tokenRes.rows[0].user_id, 'logout');
   }
 
-  // We don't error if the token wasn't found or was already revoked —
-  // the desired end state (token is invalid) is already true.
+  
+  
   return { message: 'Logged out successfully' };
 };
 
-// =========================================
-// LOGOUT ALL DEVICES
-// =========================================
 
-/**
- * Revoke every live refresh token for a user.
- * Useful as a "sign out everywhere" feature or after a password change.
- */
+
+
+
+
+
+
+
 exports.logoutAll = async (userId) => {
   await db.query(
     `UPDATE refresh_tokens

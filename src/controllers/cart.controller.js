@@ -1,6 +1,6 @@
 const cartService = require('../services/cart.service');
 
-// GET CART
+
 exports.getCart = async (req, res, next) => {
   try {
     const cart = await cartService.getCart(req.user.id);
@@ -10,7 +10,7 @@ exports.getCart = async (req, res, next) => {
   }
 };
 
-// ADD ITEM
+
 exports.addItem = async (req, res, next) => {
   try {
     const { variant_id, quantity } = req.body;
@@ -41,7 +41,7 @@ exports.addItem = async (req, res, next) => {
   }
 };
 
-// REMOVE ITEM
+
 exports.removeItem = async (req, res, next) => {
   try {
     const cart = await cartService.getOrCreateCart(req.user.id);
@@ -57,7 +57,7 @@ exports.removeItem = async (req, res, next) => {
   }
 };
 
-// CLEAR CART
+
 exports.clearCart = async (req, res, next) => {
   try {
     const cart = await cartService.getOrCreateCart(req.user.id);

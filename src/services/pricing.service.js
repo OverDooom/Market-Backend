@@ -1,9 +1,9 @@
 const promotionService = require('./promotion.service');
 
 
-// =========================================
-// CALCULATE DISCOUNT
-// =========================================
+
+
+
 
 const calculateDiscount = ({ promotion, subtotal }) => {
   if (promotion.type === 'percentage') {
@@ -18,9 +18,9 @@ const calculateDiscount = ({ promotion, subtotal }) => {
 };
 
 
-// =========================================
-// CALCULATE CART
-// =========================================
+
+
+
 
 exports.calculateCart = async ({
   client,
@@ -29,9 +29,9 @@ exports.calculateCart = async ({
   couponCodes = []
 }) => {
 
-  // =====================================
-  // SUBTOTAL
-  // =====================================
+  
+  
+  
 
   let subtotal = 0;
 
@@ -39,9 +39,9 @@ exports.calculateCart = async ({
     subtotal += Number(item.price) * item.quantity;
   }
 
-  // =====================================
-  // LOAD PROMOTIONS
-  // =====================================
+  
+  
+  
 
   const promotions = [];
 
@@ -55,9 +55,9 @@ exports.calculateCart = async ({
     promotions.push(coupon);
   }
 
-  // =====================================
-  // FILTER VALID PROMOTIONS
-  // =====================================
+  
+  
+  
 
   const validPromotions = [];
 
@@ -72,16 +72,16 @@ exports.calculateCart = async ({
     }
   }
 
-  // =====================================
-  // STACKABLE / NON-STACKABLE SPLIT
-  // =====================================
+  
+  
+  
 
   const nonStackable = validPromotions.filter(p => !p.stackable);
   const stackable    = validPromotions.filter(p =>  p.stackable);
 
-  // =====================================
-  // PICK BEST NON-STACKABLE
-  // =====================================
+  
+  
+  
 
   let bestPromo    = null;
   let bestDiscount = 0;
@@ -107,14 +107,14 @@ exports.calculateCart = async ({
     }
   }
 
-  // =====================================
-  // BUILD FINAL PROMOTIONS LIST
-  // =====================================
+  
+  
+  
 
-  // If there are non-stackable promos, take only the best one.
-  // Stackable promos never compete with each other — all apply.
-  // Non-stackable beats stackable; if no non-stackable exists,
-  // all stackable promos apply together.
+  
+  
+  
+  
 
   let finalPromotions;
 
@@ -127,9 +127,9 @@ exports.calculateCart = async ({
     finalPromotions = stackable;
   }
 
-  // =====================================
-  // CALCULATE FINAL DISCOUNTS
-  // =====================================
+  
+  
+  
 
   const discounts = [];
   let discountTotal = 0;
@@ -151,7 +151,7 @@ exports.calculateCart = async ({
       subtotal: eligibleSubtotal
     });
 
-    // prevent over-discount
+    
     discount = Math.min(discount, eligibleSubtotal);
 
     discountTotal += discount;
@@ -164,9 +164,9 @@ exports.calculateCart = async ({
     });
   }
 
-  // =====================================
-  // FINAL TOTAL
-  // =====================================
+  
+  
+  
 
   const total = Math.max(0, subtotal - discountTotal);
 

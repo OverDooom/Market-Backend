@@ -1,10 +1,10 @@
 const db = require('../config/db');
 
-// =========================================
-// HELPERS
-// =========================================
 
-/** Fetch and attach coupons, targeting, and usage counts to a promotion row. */
+
+
+
+
 async function enrichPromotion(promo) {
   const [coupons, products, categories, users, usageRes] = await Promise.all([
 
@@ -59,7 +59,7 @@ async function enrichPromotion(promo) {
   };
 }
 
-/** Replace all rows in a join table for a given promotion. */
+
 async function replaceTargeting(client, promotionId, table, column, ids = []) {
   await client.query(
     `DELETE FROM ${table} WHERE promotion_id = $1`,
@@ -75,9 +75,9 @@ async function replaceTargeting(client, promotionId, table, column, ids = []) {
   }
 }
 
-// =========================================
-// LIST PROMOTIONS
-// =========================================
+
+
+
 
 exports.listPromotions = async ({ active } = {}) => {
   const conditions = [];
@@ -129,30 +129,30 @@ exports.getPromotion = async (id) => {
   return enrichPromotion(result.rows[0]);
 };
 
-// =========================================
-// CREATE PROMOTION
-// =========================================
 
-/**
- * Body shape:
- * {
- *   name, type, value,
- *   is_automatic, stackable, coupon_required,
- *   start_date, end_date,
- *   usage_limit, usage_per_user,
- *   min_cart_total, first_order_only,
- *
- *   // optional targeting
- *   product_ids:  [1, 2],
- *   category_ids: [3],
- *   user_ids:     [10, 11],
- *
- *   // optional inline coupon creation
- *   coupons: [
- *     { code: 'SUMMER20', usage_limit: 100, expires_at: '2026-09-01' }
- *   ]
- * }
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 exports.createPromotion = async (data) => {
   const {
     name,
@@ -174,7 +174,7 @@ exports.createPromotion = async (data) => {
     coupons          = [],
   } = data;
 
-  // Core validation
+  
   if (!name || !type || value === undefined) {
     const err = new Error('name, type, and value are required');
     err.status = 400;
@@ -199,7 +199,7 @@ exports.createPromotion = async (data) => {
     throw err;
   }
 
-  // Duplicate coupon codes within this request
+  
   const codes = coupons.map(c => c.code?.trim().toUpperCase()).filter(Boolean);
   if (new Set(codes).size !== codes.length) {
     const err = new Error('Duplicate coupon codes in request');
@@ -212,7 +212,7 @@ exports.createPromotion = async (data) => {
   try {
     await client.query('BEGIN');
 
-    // 1. Insert promotion
+    
     const promoRes = await client.query(
       `INSERT INTO promotions (
          name, type, value,
@@ -234,12 +234,12 @@ exports.createPromotion = async (data) => {
 
     const promo = promoRes.rows[0];
 
-    // 2. Insert targeting
+    
     await replaceTargeting(client, promo.id, 'promotion_products',   'product_id',  product_ids);
     await replaceTargeting(client, promo.id, 'promotion_categories', 'category_id', category_ids);
     await replaceTargeting(client, promo.id, 'promotion_users',      'user_id',     user_ids);
 
-    // 3. Insert coupons
+    
     for (const coupon of coupons) {
       if (!coupon.code) {
         const err = new Error('Each coupon must have a code');
@@ -266,7 +266,7 @@ exports.createPromotion = async (data) => {
 
   } catch (err) {
     await client.query('ROLLBACK');
-    // Re-wrap unique violation on coupon code
+    
     if (err.code === '23505' && err.constraint?.includes('promotion_coupons')) {
       const e = new Error('A coupon with that code already exists');
       e.status = 400;
@@ -278,17 +278,17 @@ exports.createPromotion = async (data) => {
   }
 };
 
-// =========================================
-// UPDATE PROMOTION
-// =========================================
 
-/**
- * Accepts the same shape as create.
- * Targeting arrays fully replace existing rows.
- * Omit a targeting array to leave it unchanged.
- */
+
+
+
+
+
+
+
+
 exports.updatePromotion = async (id, data) => {
-  // Fetch existing
+  
   const existing = await db.query(
     `SELECT * FROM promotions WHERE id = $1`,
     [id]
@@ -316,7 +316,7 @@ exports.updatePromotion = async (id, data) => {
     usage_per_user   = promo.usage_per_user,
     min_cart_total   = promo.min_cart_total,
     first_order_only = promo.first_order_only,
-    product_ids,    // undefined = don't touch
+    product_ids,    
     category_ids,
     user_ids,
   } = data;
@@ -362,7 +362,7 @@ exports.updatePromotion = async (id, data) => {
       ]
     );
 
-    // Only replace targeting when caller explicitly passes the array
+    
     if (product_ids  !== undefined)
       await replaceTargeting(client, id, 'promotion_products',   'product_id',  product_ids);
     if (category_ids !== undefined)
@@ -382,9 +382,9 @@ exports.updatePromotion = async (id, data) => {
   }
 };
 
-// =========================================
-// TOGGLE ACTIVE
-// =========================================
+
+
+
 
 exports.togglePromotion = async (id) => {
   const result = await db.query(
@@ -404,12 +404,12 @@ exports.togglePromotion = async (id) => {
   return result.rows[0];
 };
 
-// =========================================
-// DELETE PROMOTION
-// =========================================
+
+
+
 
 exports.deletePromotion = async (id) => {
-  // Guard: refuse if there's recorded usage
+  
   const usageRes = await db.query(
     `SELECT COUNT(*)::INTEGER AS count
      FROM promotion_usage
@@ -440,12 +440,12 @@ exports.deletePromotion = async (id) => {
   return result.rows[0];
 };
 
-// =========================================
-// USAGE STATS
-// =========================================
+
+
+
 
 exports.getUsageStats = async (id) => {
-  // Guard: promotion must exist
+  
   const promoRes = await db.query(
     `SELECT id, name FROM promotions WHERE id = $1`,
     [id]
@@ -504,14 +504,14 @@ exports.getUsageStats = async (id) => {
   };
 };
 
-// =========================================
-// COUPONS — ADD
-// =========================================
 
-/**
- * Add one or many coupons to an existing promotion.
- * Body: { coupons: [{ code, usage_limit?, expires_at? }] }
- */
+
+
+
+
+
+
+
 exports.addCoupons = async (promotionId, coupons = []) => {
   if (!Array.isArray(coupons) || coupons.length === 0) {
     const err = new Error('coupons must be a non-empty array');
@@ -519,7 +519,7 @@ exports.addCoupons = async (promotionId, coupons = []) => {
     throw err;
   }
 
-  // Promotion must exist
+  
   const promoRes = await db.query(
     `SELECT id FROM promotions WHERE id = $1`,
     [promotionId]
@@ -568,9 +568,9 @@ exports.addCoupons = async (promotionId, coupons = []) => {
   return inserted;
 };
 
-// =========================================
-// COUPONS — TOGGLE
-// =========================================
+
+
+
 
 exports.toggleCoupon = async (promotionId, couponId) => {
   const result = await db.query(
@@ -590,12 +590,12 @@ exports.toggleCoupon = async (promotionId, couponId) => {
   return result.rows[0];
 };
 
-// =========================================
-// COUPONS — DELETE
-// =========================================
+
+
+
 
 exports.deleteCoupon = async (promotionId, couponId) => {
-  // Guard: refuse if coupon has been used
+  
   const usageRes = await db.query(
     `SELECT COUNT(*)::INTEGER AS count
      FROM promotion_usage

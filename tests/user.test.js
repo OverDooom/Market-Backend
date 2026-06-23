@@ -4,9 +4,9 @@ const db = require('../src/config/db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
-// =========================================
-// HELPERS
-// =========================================
+
+
+
 
 async function createUser(suffix) {
   const email = `user_${suffix}_${Date.now()}@mail.com`;
@@ -32,9 +32,9 @@ afterAll(async () => {
   await db.end();
 });
 
-// =========================================
-// GET PROFILE  GET /api/user/me
-// =========================================
+
+
+
 
 describe('GET /api/user/me', () => {
 
@@ -95,9 +95,9 @@ describe('GET /api/user/me', () => {
 
 });
 
-// =========================================
-// UPDATE PROFILE  PUT /api/user/me
-// =========================================
+
+
+
 
 describe('PUT /api/user/me', () => {
 
@@ -139,13 +139,13 @@ describe('PUT /api/user/me', () => {
     const user = await createUser('partial');
     createdUserIds.push(user.id);
 
-    // Set a name first
+    
     await request(app)
       .put('/api/user/me')
       .set('Authorization', `Bearer ${user.token}`)
       .send({ name: 'OriginalName' });
 
-    // Update only phone
+    
     const res = await request(app)
       .put('/api/user/me')
       .set('Authorization', `Bearer ${user.token}`)

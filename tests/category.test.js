@@ -3,15 +3,15 @@ const app = require('../src/app');
 const db = require('../src/config/db');
 const { adminToken, userToken } = require('./helpers/auth');
 
-// Track every category id created so afterAll can clean up reliably
-// even if a test fails midway through.
+
+
 const createdIds = [];
 
 let parentCategory;
 let childCategory;
 
 beforeAll(async () => {
-  // Cleanup any leftovers from a previous failed run
+  
   await db.query(`
     DELETE FROM categories
     WHERE name IN (
@@ -39,9 +39,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Delete children before parents to respect FK constraints.
-  // Sort descending by id: children always have a higher id than
-  // their parent since they were inserted after.
+  
+  
+  
   const sorted = [...createdIds].sort((a, b) => b - a);
 
   for (const id of sorted) {
@@ -49,14 +49,14 @@ afterAll(async () => {
       `DELETE FROM categories WHERE id = $1`,
       [id]
     ).catch(() => {
-      // Already deleted by a test — that's fine
+      
     });
   }
 });
 
-// =========================================
-// GET ALL
-// =========================================
+
+
+
 
 describe('GET /api/categories', () => {
 
@@ -80,9 +80,9 @@ describe('GET /api/categories', () => {
 
 });
 
-// =========================================
-// GET BY ID
-// =========================================
+
+
+
 
 describe('GET /api/categories/:id', () => {
 
@@ -117,9 +117,9 @@ describe('GET /api/categories/:id', () => {
 
 });
 
-// =========================================
-// CREATE
-// =========================================
+
+
+
 
 describe('POST /api/categories', () => {
 
@@ -184,9 +184,9 @@ describe('POST /api/categories', () => {
 
 });
 
-// =========================================
-// UPDATE
-// =========================================
+
+
+
 
 describe('PUT /api/categories/:id', () => {
 
@@ -252,9 +252,9 @@ describe('PUT /api/categories/:id', () => {
 
 });
 
-// =========================================
-// DELETE
-// =========================================
+
+
+
 
 describe('DELETE /api/categories/:id', () => {
 
@@ -271,7 +271,7 @@ describe('DELETE /api/categories/:id', () => {
       INSERT INTO categories (name) VALUES ('DELETE_ME') RETURNING *
     `);
     const id = created.rows[0].id;
-    // No need to push to createdIds — the test deletes it itself
+    
 
     const res = await request(app)
       .delete(`/api/categories/${id}`)
